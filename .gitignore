@@ -1,0 +1,20 @@
+
+.idea/
+__pycache__/
+*.py[cod]
+
+# Local datasets and trained artifacts
+dataset/
+models/
+checkpoint.pt
+TEMP_NAME.pt
+*.pt
+*.pkl
+*.dat
+*.ckpt
+*.h5
+*.npy
+*.npz
+*.joblib
+
+*.xml
