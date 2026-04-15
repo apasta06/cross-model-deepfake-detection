@@ -4,6 +4,9 @@ __pycache__/
 *.py[cod]
 .venv/
 .ui_mvp_data/
+.kaggle_cache/
+smoke_dataset/
+smoke_outputs/
 
 # Local datasets and trained artifacts
 dataset/

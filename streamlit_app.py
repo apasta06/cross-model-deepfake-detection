@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from ui_mvp.analysis import AnalysisError, analyze_media, save_uploaded_file, validate_upload
-from ui_mvp.config import MAX_UPLOAD_SIZE_MB, MODEL_OPTIONS, RETENTION_MESSAGE, RISK_COLORS, SUPPORTED_INPUT_FORMATS
+from ui_mvp.config import BASE_DIR, MAX_UPLOAD_SIZE_MB, MODEL_OPTIONS, RETENTION_MESSAGE, RISK_COLORS, SUPPORTED_INPUT_FORMATS
 from ui_mvp.reporting import build_report_html, build_report_json, suggested_report_name
 from ui_mvp.schemas import HistoryRecord
 from ui_mvp.storage import append_history, load_history, update_report_path, write_report_file
@@ -71,6 +71,37 @@ def risk_color(risk_level: str) -> str:
     return RISK_COLORS.get(risk_level, "#E5E7EB")
 
 
+def discover_checkpoints(selected_model: str) -> list[Path]:
+    pattern_map = {
+        "XCEPTION": "Xception*.pt",
+        "MESO4": "Meso4*.pt",
+        "MESOINCEPTION4": "MesoInception4*.pt",
+        "EFFICIENTB0": "Efficient*.pt",
+    }
+    pattern = pattern_map.get(selected_model)
+    if not pattern:
+        return []
+
+    search_dirs = [
+        BASE_DIR / "smoke_outputs",
+        BASE_DIR / "Unimodal" / "weights" / "video",
+        BASE_DIR / "Unimodal" / "weights" / "audio",
+        BASE_DIR,
+    ]
+    discovered: list[Path] = []
+    for folder in search_dirs:
+        if folder.exists():
+            discovered.extend(folder.glob(pattern))
+    unique = []
+    seen = set()
+    for path in discovered:
+        resolved = path.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(path)
+    return sorted(unique)
+
+
 def main() -> None:
     inject_theme()
     st.title("Deepfake Forensics MVP")
@@ -84,11 +115,27 @@ def main() -> None:
             list(MODEL_OPTIONS.keys()),
             format_func=lambda key: f"{key} - {MODEL_OPTIONS[key]}",
         )
+        discovered_checkpoints = discover_checkpoints(selected_model)
+        checkpoint_options = ["Manual path entry"]
+        checkpoint_options.extend(str(path) for path in discovered_checkpoints)
+        if selected_model == "MESO4":
+            smoke_checkpoint = BASE_DIR / "smoke_outputs" / "best_MESO4_VIDEO.pt"
+            if smoke_checkpoint.exists() and str(smoke_checkpoint) not in checkpoint_options:
+                checkpoint_options.insert(1, str(smoke_checkpoint))
+        selected_checkpoint = st.selectbox(
+            "Available checkpoints",
+            checkpoint_options,
+            help="Choose a discovered checkpoint or keep manual entry selected.",
+        )
         checkpoint_text = st.text_input(
             "Checkpoint path",
-            value="",
+            value="" if selected_checkpoint == "Manual path entry" else selected_checkpoint,
             help="Optional. Supply a compatible .pt checkpoint for model-backed scoring.",
         )
+        if discovered_checkpoints:
+            st.caption(f"Auto-detected {len(discovered_checkpoints)} checkpoint(s) for {selected_model}.")
+        if selected_model == "MESO4":
+            st.caption("Smoke-test checkpoint search includes `smoke_outputs/best_MESO4_VIDEO.pt`.")
         st.caption(f"Supported uploads: {', '.join(SUPPORTED_INPUT_FORMATS)}")
         st.caption(f"Maximum upload size: {MAX_UPLOAD_SIZE_MB} MB")
 
@@ -106,21 +153,30 @@ def main() -> None:
         st.write(f"Filename: `{uploaded_file.name}`")
         st.write(f"Size: `{file_size_mb:.2f} MB`")
         st.write(f"Format: `{Path(uploaded_file.name).suffix.lower()}`")
-        if checkpoint_text and not Path(checkpoint_text).expanduser().exists():
+        effective_checkpoint_text = checkpoint_text.strip()
+        if selected_checkpoint != "Manual path entry":
+            effective_checkpoint_text = selected_checkpoint
+
+        if effective_checkpoint_text and not Path(effective_checkpoint_text).expanduser().exists():
             st.warning("The checkpoint path does not exist. The run will fall back to metadata-only review mode.")
+        elif effective_checkpoint_text:
+            st.info(f"Using checkpoint: `{effective_checkpoint_text}`")
+        else:
+            st.info("No checkpoint selected. The run will use metadata-only review mode.")
 
         if st.button("2. Run Analysis", type="primary", use_container_width=True):
             tmp_path = save_uploaded_file(uploaded_file)
             try:
                 validate_upload(tmp_path, MAX_UPLOAD_SIZE_MB)
-                checkpoint_path = Path(checkpoint_text).expanduser() if checkpoint_text else None
-                result = analyze_media(tmp_path, selected_model, checkpoint_path)
+                checkpoint_path = Path(effective_checkpoint_text).expanduser() if effective_checkpoint_text else None
+                with st.spinner("Running analysis. Large videos can take around a minute on CPU..."):
+                    result = analyze_media(tmp_path, selected_model, checkpoint_path)
                 append_history(HistoryRecord.from_result(result))
                 st.session_state.latest_result = result
                 st.session_state.latest_media_bytes = uploaded_file.getvalue()
                 st.session_state.latest_media_name = uploaded_file.name
                 st.session_state.latest_report_path = None
-                st.success("Analysis complete. Review the dashboard below.")
+                st.success("Analysis complete. Results are shown below in section 3.")
             except AnalysisError as exc:
                 st.error(str(exc))
             except Exception as exc:  # pragma: no cover
