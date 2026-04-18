@@ -1,3 +1,12 @@
 
 Unimodal/Training/__pycache__/__init__.cpython-38.pyc
 *.xml
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+checkpoints/
+processed_data/
+*.mp4
+*.csv
+FakeAVCeleb_Faces/
