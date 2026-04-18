@@ -10,7 +10,7 @@ from facenet_pytorch import MTCNN
 
 # --- CONFIGURATION ---
 # Change this to your new model name (best_corrected_model.pt)
-VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\FakeVideo-FakeAudio\Caucasian (American)\women\id01225\00300_id00231_wavtolip.mp4"
+VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\RealVideo-RealAudio\Caucasian (American)\men\id00029\00288.mp4"
 MODEL_PATH = r"best_corrected_model.pt" 
 THRESHOLD_SENSITIVITY = 0.20 # Adjusted for the new model's confidence
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -78,11 +78,16 @@ def run_inference():
             
             with torch.no_grad():
                 output = model(face_tensor)
-                # NEW: Use Sigmoid for the single-output model
-                prob = torch.sigmoid(output).item()
+                
+                # Bumping T up significantly
+                # T = 1.0 -> 1.0000 (Saturated)
+                # T = 3.0 -> 0.9998 (Still too high)
+                # T = 8.0 or 10.0 -> This should give you 0.8x or 0.9x values
+                T = 8.0 
+                prob = torch.sigmoid(output / T).item()
                 
                 fake_scores.append(prob)
-                print(f"  [Frame {i:3}] Fake Prob: {prob:.4f}")
+                print(f"  [Frame {i:3}] Suspiciousness: {prob:.4f}")
 
     cap.release()
 
