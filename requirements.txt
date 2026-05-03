@@ -1,9 +1,13 @@
-python==3.8.0
-numpy==1.20.3
-torch==1.8.0
-torchvision==0.9.0
-matplotlib==3.3.4
-tqdm==4.61.2
-sklearn
+# Legacy full-project dependencies.
+# Recommended for the original training/evaluation code on Python 3.8.
+# For UI-only testing on newer Python versions, use requirements-ui.txt instead.
+numpy
+torch
+torchvision
+matplotlib
+tqdm
 scikit-learn
 pandas
+streamlit
+opencv-python-headless
+Pillow

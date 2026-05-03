@@ -48,8 +48,8 @@ def train(model, iterator, optimizer, criterion, scaler, device):
     tot = 0
     correct = 0
     for (x, y) in tqdm(iterator):
-        x, y = x.cuda(), y.cuda()
-        with autocast(enabled=True):
+        x, y = x.to(device), y.to(device)
+        with autocast(enabled=(device.type == "cuda")):
             optimizer.zero_grad()
             y_pred = model(x)
 
@@ -82,7 +82,7 @@ def evaluate(model, iterator, criterion, device):
     model.eval()
     with torch.no_grad():
         for (x, y) in tqdm(iterator):
-            x, y = x.cuda(), y.cuda()
+            x, y = x.to(device), y.to(device)
             y_pred = model(x)
             loss = criterion(y_pred, y)
 
@@ -116,8 +116,8 @@ def train_ensemble(model, iterator, optimizer, criterion, scaler, device):
     tot = 0
     correct = 0
     for (x, y) in tqdm(iterator):
-        x, y = x.cuda(), y.cuda()
-        with autocast(enabled=True):
+        x, y = x.to(device), y.to(device)
+        with autocast(enabled=(device.type == "cuda")):
             optimizer.zero_grad()
             y_pred = model(x)
 
@@ -150,7 +150,7 @@ def evaluate_ensemble(model, iterator, criterion, device):
     model.eval()
     with torch.no_grad():
         for (x, y) in tqdm(iterator):
-            x, y = x.cuda(), y.cuda()
+            x, y = x.to(device), y.to(device)
             y_pred = model(x)
             loss = criterion(y_pred, y)
 
