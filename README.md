@@ -12,7 +12,7 @@ If you would like to download the FakeAVCeleb dataset, please fill out the [**Go
 Once, you obtain the download link, please see the [download section](dataset/README.md) in our [Dataset site](https://sites.google.com/view/fakeavcelebdash-lab/). You can also find details about our FakeAVCeleb dataset.
 
 ## Requirements and Installation
-We recommend the installation using the _requilrements.txt_ contained in this Github.  
+We recommend installation using the `requirements.txt` file contained in this GitHub repository.  
 python==3.8.0  
 numpy==1.20.3  
 torch==1.8.0  
@@ -24,6 +24,37 @@ pandas
 ```console
 pip install -r requirements.txt
 ```
+
+## Frontend Development
+
+This repository now also contains a separate React frontend in `frontend/` that is intended to replace the Streamlit UI over time.
+
+For frontend contributors:
+
+- frontend setup and usage: `frontend/README.md`
+- frontend workflow and review process: `FRONTEND_WORKFLOW.md`
+- common install and run commands: `commands.md`
+
+The frontend stack currently uses:
+
+- React
+- TypeScript
+- Vite
+- Storybook
+- Playwright
+
+Typical frontend commands:
+
+```console
+cd frontend
+npm install
+npm run dev
+npm run storybook
+npm run test:e2e
+```
+
+The Python and frontend environments are intentionally kept separate.
+
 ## Deepfake Dataset for Quantitative Comparison
 - ### Quantitative comparison of FakeAVCeleb to existing publicly available **Deepfake dataset**.
 
@@ -45,13 +76,13 @@ pip install -r requirements.txt
 ### - Full Usages
 
 ```console
-  -m                   model name = [MESO4, MESOINCEPTION4, XCEPTION, EFFICIENTB0, F3NET, LIPS, XRAY, HEADPOSE, EXPLOTING, CAPSULE]
+  -m                   model name = [MESO4, MESOINCEPTION4, XCEPTION, EFFICIENTB0, F3NET, LIPS, XRAY, HEADPOSE, EXPLOITING, CAPSULE]
   -v                   path of video data
   -a                   path of audio data
-  -vm                  path of video model (For evluation)
-  -am                  path of audio model (For evluation)
+  -vm                  path of video model (For evaluation)
+  -am                  path of audio model (For evaluation)
   -sm                  path to save best-model while training
-  -l                   learning late (For training)
+  -l                   learning rate (For training)
   -me                  number of epoch (For training)
   -nb                  batch size
   -ng                  gpu device to use (default=0) can be 0,1,2 for multi-gpu
@@ -62,16 +93,16 @@ pip install -r requirements.txt
 
 
 ####
-- **Note that** it must be required to write the **model name** and **either video informs**(_data path, model path_) **or audio informs**(_data path, model path_)
-- More, **the model name should be picked one of thes**e : [MESO4, MESOINCEPTION4, XCEPTION]
+- **Note that** it is required to provide the **model name** and **either video inputs**(_data path, model path_) **or audio inputs**(_data path, model path_)
+- More, **the model name should be picked from these**: [MESO4, MESOINCEPTION4, XCEPTION]
 ### - Benchmark
 To train and evaluate the model(s) in the paper, run this command:
 - **1. Unimodal**
     ```TRAIN
-   python triain_main.py -m=<model name> -v=<data path for video> -a=<data path for audio> 
+   python train_main.py -m=<model name> -v=<data path for video> -a=<data path for audio> 
     ```
-   After train the model, you can **_soely evaluate_** the result.
-    ```SOELY EVALUATION (Audio and Video, _respectively_.)
+   After training the model, you can **_solely evaluate_** the result.
+    ```SOLELY EVALUATION (Audio and Video, _respectively_.)
     python eval_main.py -m=<model name> -v=<data path for video> -vm=<model path for video> -a=<data path for audio> -am=<model path for audio>
     ```
    you can evaluate the result of **_Ensemble Prediction_**.
@@ -80,9 +111,9 @@ To train and evaluate the model(s) in the paper, run this command:
     ```
   
 - **2. Multimodal**
-- For using _Headpose, Exploting, and Capsule-Forensics_, please cite and download for running codes.  
+- For using _Headpose, Exploiting, and Capsule-Forensics_, please cite and download the external codebases.  
 _Headpose_ :https://bitbucket.org/ericyang3721/headpose_forensic/src/master/  
-_Exploting_ :https://github.com/FalkoMatern/Exploiting-Visual-Artifacts  
+_Exploiting_ :https://github.com/FalkoMatern/Exploiting-Visual-Artifacts  
 _Capsule-Forensics_ :https://github.com/nii-yamagishilab/Capsule-Forensics  
 
 
@@ -120,7 +151,7 @@ If you use the FakeAVCeleb data or code please cite:
 }
 ```
  
-## Contect
+## Contact
 If you have any questions, please contact us at hasam.khalid/shahroz/kimminha@g.skku.edu.
  
 ## References

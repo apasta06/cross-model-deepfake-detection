@@ -2,7 +2,7 @@
 
 ## Goal
 
-Set up a React frontend workflow that lets OpenCode help with:
+Set up and maintain a React frontend workflow that lets OpenCode help with:
 
 - UI design and architecture
 - component and page implementation
@@ -10,6 +10,21 @@ Set up a React frontend workflow that lets OpenCode help with:
 - automated UI review without manually copying screenshots or DOM
 
 The main constraint is that OpenCode cannot directly watch a live browser session in the same way a human can. The workflow below solves that by generating browser artifacts that can be inspected from the workspace.
+
+## Current Status
+
+The workflow is now set up and verified in this repository.
+
+- `frontend/` exists as a Vite React TypeScript app
+- Storybook is installed and builds successfully
+- Playwright is installed and runs a committed smoke test successfully
+- artifacts can be generated into `frontend/artifacts/`
+
+Verified outputs currently include:
+
+- `frontend/artifacts/app/home.png`
+- `frontend/artifacts/app/home.html`
+- `frontend/artifacts/storybook/home.png`
 
 ## Recommended Setup
 
@@ -29,6 +44,11 @@ This keeps Python and Node dependencies isolated and avoids mixing UI tooling in
 - Vite
 - Storybook
 - Playwright
+
+This repo currently uses:
+
+- `playwright` for CLI-style browser automation
+- `@playwright/test` for committed smoke and end-to-end tests
 
 ## Why Storybook
 
@@ -58,7 +78,7 @@ It gives us:
 - automated page opening
 - clicking, typing, and navigation
 - screenshot capture
-- HTML/DOM snapshot capture
+- HTML and DOM snapshot capture
 - console error detection
 - responsive viewport checks
 - repeatable test automation for later CI usage
@@ -68,31 +88,25 @@ In this workflow:
 - Storybook defines what UI state should exist
 - Playwright verifies what actually rendered
 
-## Why Start With Playwright CLI First
+## Playwright CLI vs Committed Tests
 
-Playwright CLI is a good first step before committing to test files.
+Use both, for different jobs.
 
-Benefits:
+Playwright CLI is best for:
 
 - quick exploration
-- easy local experimentation
-- helps discover selectors, routes, and wait conditions
-- helps us learn which states and artifacts matter
+- ad hoc screenshots
+- discovering selectors and routes
+- experimenting before formalizing tests
 
-Once the workflow is understood, we can convert it into committed Playwright tests for reliable automation.
+Committed Playwright tests are best for:
 
-## Why Not Only Use Playwright CLI Long-Term
+- repeatable verification
+- version-controlled review workflows
+- CI reuse
+- named scenarios and artifact generation
 
-CLI is best for ad hoc exploration.
-
-For long-term project use, Playwright test files are better because they are:
-
-- repeatable
-- version-controlled
-- easier to maintain
-- better for named scenarios and artifact generation
-
-Use CLI first to learn the workflow, then formalize it into tests.
+Recommended approach: use Playwright CLI first to learn the flow, then convert useful checks into committed tests.
 
 ## Storybook vs Playwright
 
@@ -115,7 +129,7 @@ Recommended approach: use both.
 
 ## Frontend Folder Layout
 
-Suggested structure:
+Current structure:
 
 ```text
 .
@@ -136,7 +150,7 @@ Notes:
 - `frontend/src/` contains React components and pages
 - `frontend/.storybook/` contains Storybook config
 - `frontend/tests/` contains Playwright tests
-- `frontend/artifacts/` stores generated screenshots, HTML, and logs during review
+- `frontend/artifacts/` stores generated screenshots and HTML during review
 
 ## Installation Steps
 
@@ -145,7 +159,7 @@ Run these from the repository root unless stated otherwise.
 ### 1. Create the React app
 
 ```bash
-npm create vite@latest frontend -- --template react-ts
+npm create vite@latest frontend -- --template react-ts --no-interactive
 ```
 
 ### 2. Install frontend dependencies
@@ -158,23 +172,24 @@ npm install
 ### 3. Add Storybook
 
 ```bash
-npx storybook@latest init
+npx storybook@latest init --yes
 ```
 
-### 4. Add Playwright
-
-If starting with CLI-style exploration:
+### 4. Add Playwright browser support
 
 ```bash
-npm install -D playwright
-npx playwright install
+npx playwright install chromium
 ```
 
-If using the full Playwright project initializer instead, use that inside `frontend/` and adapt generated files as needed.
+If Linux dependencies are missing:
+
+```bash
+npx playwright install chromium --with-deps
+```
 
 ## Recommended Scripts
 
-Add or keep scripts like these in `frontend/package.json`:
+Keep scripts like these in `frontend/package.json`:
 
 ```json
 {
@@ -188,17 +203,26 @@ Add or keep scripts like these in `frontend/package.json`:
 }
 ```
 
-## Recommended Ignore Rules
+## Ignore Strategy
 
-Make sure `frontend/.gitignore` includes:
+Use the repository root `.gitignore` to ignore generated frontend files:
 
 ```gitignore
-node_modules/
-storybook-static/
-playwright-report/
-test-results/
-artifacts/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/storybook-static/
+frontend/playwright-report/
+frontend/test-results/
+frontend/artifacts/
 ```
+
+Why keep these rules at the repo root instead of in `frontend/.gitignore`:
+
+- the whole codebase is one Git repository
+- it keeps all tracked versus ignored decisions in one place
+- teammates can review repo-wide ignore behavior without checking nested files
+- it avoids duplicate ignore rules across subprojects
 
 ## Suggested Workflow With OpenCode
 
@@ -264,8 +288,8 @@ Since OpenCode can read files in the workspace, the browser session should outpu
 Example artifact paths:
 
 - `frontend/artifacts/storybook/home.png`
-- `frontend/artifacts/storybook/home.html`
-- `frontend/artifacts/storybook/console.log`
+- `frontend/artifacts/app/home.png`
+- `frontend/artifacts/app/home.html`
 
 This is the core workflow change that makes automated UI review practical.
 
@@ -275,7 +299,7 @@ This is the core workflow change that makes automated UI review practical.
 2. Install Storybook.
 3. Install Playwright.
 4. Use Playwright CLI first to explore the workflow.
-5. Decide which stories/pages should be captured.
+5. Decide which stories and pages should be captured.
 6. Convert the working process into committed Playwright tests.
 7. Reuse those tests for repeatable UI review.
 
@@ -289,16 +313,42 @@ The first milestone should be:
 4. one screenshot is captured successfully
 5. the artifact can be inspected from the repo
 
-Once that works, the workflow is proven.
+This milestone is now complete in the current repo state.
+
+Verified commands:
+
+- `cd frontend && npm run build`
+- `cd frontend && npm run build-storybook`
+- `cd frontend && npm run test:e2e`
+
+## Working Without `.claude`
+
+This repo no longer depends on a `.claude/` folder for frontend work.
+
+That means:
+
+- no local skill files are required to run the frontend workflow
+- browser automation should use standard Playwright commands and npm scripts
+- documentation should describe repo-local tooling, not editor-specific local extensions
+
+## What To Document Next
+
+As the frontend grows, the next useful docs to maintain are:
+
+- app architecture and routing decisions
+- component conventions and where stories live
+- API integration boundaries between React and Python services
+- how to capture and review artifacts for bug reports
+- CI expectations for `build`, `build-storybook`, and `test:e2e`
 
 ## Summary
 
 Recommended approach for this repo:
 
-- create a separate `frontend/` React app
+- create and keep a separate `frontend/` React app
 - use Storybook for component-level UI development
 - use Playwright for browser automation and artifact capture
 - start with Playwright CLI to learn the flow
-- later convert that flow into committed Playwright tests
+- convert stable flows into committed Playwright tests
 
 This setup gives a practical collaboration loop where OpenCode can help design, generate, review, and refine UI with much less manual copy-pasting.
