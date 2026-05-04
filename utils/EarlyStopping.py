@@ -22,7 +22,11 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
+<<<<<<< HEAD
         self.val_loss_min = np.Inf
+=======
+        self.val_loss_min = np.inf
+>>>>>>> 6e08dade97ae03af73df07f729fb64b2a6b961ff
         self.delta = delta
         self.path = path
         self.trace_func = trace_func
@@ -48,4 +52,8 @@ class EarlyStopping:
         if self.verbose:
             self.trace_func(f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
         torch.save(model.state_dict(), self.path)
+<<<<<<< HEAD
         self.val_loss_min = val_loss
+=======
+        self.val_loss_min = val_loss
+>>>>>>> 6e08dade97ae03af73df07f729fb64b2a6b961ff
