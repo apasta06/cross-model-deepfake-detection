@@ -1,12 +1,22 @@
-
-Unimodal/Training/__pycache__/__init__.cpython-38.pyc
-*.xml
+# --- Python & Environment ---
 venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-checkpoints/
-processed_data/
+
+# --- IDE & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Data & Checkpoints (Large Files) ---
 *.mp4
+*.xml
 *.csv
+processed_data/
 FakeAVCeleb_Faces/
+checkpoints/
+
+# --- Sensitive Info ---
+.env
