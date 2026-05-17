@@ -23,3 +23,9 @@ TEMP_NAME.pt
 *.joblib
 
 *.xml
+
+
+./frontend/artifacts/
+./frontend/dist/
+./frontend/node_modules/
+./frontend/.cache/
