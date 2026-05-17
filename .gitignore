@@ -24,6 +24,7 @@ TEMP_NAME.pt
 
 *.xml
 
+.opencode/
 
 artifacts/
 dist/
