@@ -1,8 +1,20 @@
 
+# Editor / OS files
 .idea/
+.vscode/
+.DS_Store
+
+# Python caches and virtual environments
 __pycache__/
 *.py[cod]
 .venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local app/runtime data
 .ui_mvp_data/
 .kaggle_cache/
 smoke_dataset/
@@ -24,11 +36,21 @@ TEMP_NAME.pt
 
 *.xml
 
+# Local env files
+.env
+.env.*
+!.env.example
+
+# opencode local workspace notes/config
 .opencode/
 
+# Frontend dependencies, builds, reports, and caches
 artifacts/
 dist/
 node_modules/
 .cache/
-node_modules
+coverage/
+playwright-report/
+test-results/
+.vite/
 storybook-static/
