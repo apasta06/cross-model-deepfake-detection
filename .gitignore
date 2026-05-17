@@ -25,7 +25,9 @@ TEMP_NAME.pt
 *.xml
 
 
-./frontend/artifacts/
-./frontend/dist/
-./frontend/node_modules/
-./frontend/.cache/
+artifacts/
+dist/
+node_modules/
+.cache/
+node_modules
+storybook-static/
