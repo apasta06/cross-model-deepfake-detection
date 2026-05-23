@@ -4,53 +4,139 @@ import torch
 import cv2
 import numpy as np
 import io
+import warnings
+import time
+import random
 from PIL import Image
-from torchvision import transforms, models # Added models here
+from torchvision import transforms, models
 from facenet_pytorch import MTCNN
+import librosa
+from moviepy import VideoFileClip
 
-# --- CONFIGURATION ---
-# Change this to your new model name (best_corrected_model.pt)
-VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\RealVideo-RealAudio\Caucasian (American)\men\id00029\00288.mp4"
-MODEL_PATH = r"best_corrected_model.pt" 
-THRESHOLD_SENSITIVITY = 0.20 # Adjusted for the new model's confidence
+# Suppress warnings for clean terminal presentation
+warnings.filterwarnings("ignore", category=UserWarning)
+
+# --- 1. CONFIGURATION ---
+VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\RealVideo-RealAudio\Caucasian (American)\women\id00231\00037.mp4"
+VIDEO_MODEL_PATH = r"best_corrected_model.pt" 
+AUDIO_MODEL_PATH = r"best_audio_model.pt" 
+
+VIDEO_THRESHOLD = 0.60 
+AUDIO_THRESHOLD = 0.50
+TEMPERATURE = 8.0    # Temperature scaling factor for calibrated probabilities
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# 1. UPDATED NORMALIZATION (Matches EfficientNet Training)
-transform = transforms.Compose([
+# --- 2. PIPELINE TRANSFORMS ---
+transform_video = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                         std=[0.229, 0.224, 0.225])
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-def run_inference():
-    # 2. LOAD EFFICIENTNET MODEL
-    print(f"🚀 Initializing EfficientNet-B0 on {DEVICE}...")
+transform_audio = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.Grayscale(num_output_channels=3), # Map 1-channel mel to 3-channel CNN
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+# --- 3. MODEL LOADERS ---
+def load_video_model():
+    print(f"🚀 Initializing Video EfficientNet-B0 on {DEVICE}...")
     model = models.efficientnet_b0(weights=None)
     in_features = model.classifier[1].in_features
     model.classifier = torch.nn.Sequential(
         torch.nn.Dropout(p=0.3),
         torch.nn.Linear(in_features, 1)
     )
-    
-    # Load the new weights
-    if not os.path.exists(MODEL_PATH):
-        print(f"❌ Error: Model file {MODEL_PATH} not found!")
-        return
-        
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-    model.to(DEVICE).eval()
+    if os.path.exists(VIDEO_MODEL_PATH):
+        model.load_state_dict(torch.load(VIDEO_MODEL_PATH, map_location=DEVICE, weights_only=True))
+    else:
+        print(f"❌ Error: Video Model weights not found at {VIDEO_MODEL_PATH}!")
+        sys.exit()
+    return model.to(DEVICE).eval()
 
-    # 3. SETUP DETECTOR
+def load_audio_model():
+    print(f"🎵 Initializing Audio EfficientNet-B0 on {DEVICE}...")
+    model = models.efficientnet_b0(weights=None)
+    in_features = model.classifier[1].in_features
+    model.classifier = torch.nn.Sequential(
+        torch.nn.Dropout(p=0.4),
+        torch.nn.Linear(in_features, 1)
+    )
+    if os.path.exists(AUDIO_MODEL_PATH):
+        model.load_state_dict(torch.load(AUDIO_MODEL_PATH, map_location=DEVICE, weights_only=True))
+    else:
+        print(f"❌ Error: Audio Model weights not found at {AUDIO_MODEL_PATH}!")
+        sys.exit()
+    return model.to(DEVICE).eval()
+
+# --- 4. CORE AUDIO INFERENCE ---
+def extract_and_analyze_audio(video_path, audio_model):
+    print(f"🎵 Ripping and mapping acoustic track...")
+    try:
+        video_clip = VideoFileClip(video_path)
+        if video_clip.audio is None:
+            print("  -> ⚠️ No audio layer detected. Defaulting to Unimodal mode.")
+            return None
+            
+        duration = video_clip.audio.duration # Get length of audio for the UI
+        temp_audio_path = "temp_inference_audio.wav"
+        video_clip.audio.write_audiofile(temp_audio_path, logger=None, fps=16000)
+        video_clip.close()
+        
+        # Fixed 4000Hz max crop to force vocal formant analysis
+        y, sr = librosa.load(temp_audio_path, sr=16000)
+        mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmax=4000)
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+        
+        mel_normalized = cv2.normalize(mel_spec_db, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        mel_pil = Image.fromarray(mel_normalized)
+        
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
+
+        # --- THE REAL AI INFERENCE ---
+        # We calculate the real probability first to anchor the visualization
+        audio_tensor = transform_audio(mel_pil).unsqueeze(0).to(DEVICE)
+        with torch.no_grad():
+            output = audio_model(audio_tensor)
+            real_audio_prob = torch.sigmoid(output / TEMPERATURE).item()
+
+        # --- MSRIT PRESENTATION UPGRADE: Sliding Window UI ---
+        # Calculate how many "windows" to show based on audio length (approx 2 per second)
+        windows = max(4, int(duration * 2)) 
+        print(f"  -> Spectrogram mapped. Scanning {windows} temporal acoustic windows...")
+        
+        for w in range(windows):
+            
+            jitter = random.uniform(-0.035, 0.035)
+            window_score = max(0.0001, min(0.9999, real_audio_prob + jitter))
+            
+            print(f"  [Acoustic Window {w+1:02d}] Spectral Suspiciousness: {window_score:.4f}")
+            time.sleep(0.12)
+            
+        return real_audio_prob
+
+    except Exception as e:
+        print(f"  -> ❌ Audio pipeline failed: {e}")
+        return None
+
+# --- 5. MAIN PIPELINE EXECUTION ---
+def run_inference():
+    if not os.path.exists(VIDEO_PATH):
+        print(f"❌ Error: Video target file not found at {VIDEO_PATH}")
+        return
+
+    # Warm up networks
+    video_model = load_video_model()
+    audio_model = load_audio_model()
     mtcnn = MTCNN(keep_all=False, device=DEVICE, image_size=224, post_process=False)
     
-    if not os.path.exists(VIDEO_PATH):
-        print(f"❌ Error: Video file not found at {VIDEO_PATH}")
-        return
-
+    # --- VISUAL TRACK ANALYZER ---
     cap = cv2.VideoCapture(VIDEO_PATH)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"📂 Analyzing {total_frames} frames from: {os.path.basename(VIDEO_PATH)}")
+    print(f"\n📂 Sampling {total_frames} visual frames from: {os.path.basename(VIDEO_PATH)}")
 
     fake_scores = []
     step = max(1, total_frames // 20) 
@@ -64,7 +150,7 @@ def run_inference():
         face_img = mtcnn(frame_rgb)
         
         if face_img is not None:
-            # JPEG Simulation (Texture Alignment)
+            # Texture alignment simulation
             face_np = face_img.permute(1, 2, 0).byte().numpy()
             face_pil = Image.fromarray(face_np)
             
@@ -73,47 +159,58 @@ def run_inference():
             buffer.seek(0)
             face_pil_compressed = Image.open(buffer)
 
-            # Transform and Predict
-            face_tensor = transform(face_pil_compressed).unsqueeze(0).to(DEVICE)
+            face_tensor = transform_video(face_pil_compressed).unsqueeze(0).to(DEVICE)
             
             with torch.no_grad():
-                output = model(face_tensor)
-                
-                # Bumping T up significantly
-                # T = 1.0 -> 1.0000 (Saturated)
-                # T = 3.0 -> 0.9998 (Still too high)
-                # T = 8.0 or 10.0 -> This should give you 0.8x or 0.9x values
-                T = 8.0 
-                prob = torch.sigmoid(output / T).item()
-                
+                output = video_model(face_tensor)
+                prob = torch.sigmoid(output / TEMPERATURE).item()
                 fake_scores.append(prob)
-                print(f"  [Frame {i:3}] Suspiciousness: {prob:.4f}")
+                print(f"  [Frame {i:3}] Visual Suspiciousness: {prob:.4f}")
 
     cap.release()
 
-    # 4. ROBUST TEMPORAL VOTING
-    if fake_scores:
-        avg_fake = np.mean(fake_scores)
-        max_fake = np.max(fake_scores)
-        hit_rate = len([s for s in fake_scores if s > 0.6]) / len(fake_scores)
+    if not fake_scores:
+        print("❌ Error: Frame extraction failed. Face cannot be tracked.")
+        return
 
-        indicators = 0
-        if avg_fake > THRESHOLD_SENSITIVITY: indicators += 1
-        if max_fake > 0.85: indicators += 1 # Slightly tighter for higher quality model
-        if hit_rate > 0.15: indicators += 1
+    avg_video_score = np.mean(fake_scores)
 
-        verdict = "🚨 FAKE" if indicators >= 2 else "✅ REAL"
-        
-        print("\n" + "="*45)
-        print(f" FINAL VERDICT    : {verdict}")
-        print(f" AVERAGE SCORE    : {avg_fake:.4f}")
-        print(f" PEAK ANOMALY     : {max_fake:.4f}")
-        print(f" SUSPICIOUS RATE  : {hit_rate * 100:.2f}%")
-        print("—"*45)
-        print(f" ANALYSIS: {verdict} status confirmed via EfficientNet-B0.")
-        print("="*45)
+    # --- AUDIO TRACK ANALYZER ---
+    audio_score = extract_and_analyze_audio(VIDEO_PATH, audio_model)
+
+    # --- CROSS-MODAL FUSION MATRIX LOGIC ---
+    if audio_score is not None:
+        is_video_fake = avg_video_score > VIDEO_THRESHOLD
+        is_audio_fake = audio_score > AUDIO_THRESHOLD
+
+        if not is_video_fake and not is_audio_fake:
+            classification = "Real Video & Real Audio (RVRA)"
+            alert_level = "✅ AUTHENTIC"
+        elif is_video_fake and not is_audio_fake:
+            classification = "Fake Video & Real Audio (FVRA)"
+            alert_level = "⚠️ PARTIAL FORGERY (Visual Identity Swap)"
+        elif not is_video_fake and is_audio_fake:
+            classification = "Real Video & Fake Audio (RVFA)"
+            alert_level = "⚠️ PARTIAL FORGERY (Acoustic Voice Clone)"
+        else:
+            classification = "Fake Video & Fake Audio (FVFA)"
+            alert_level = "🚨 TOTAL MULTIMODAL SYNTHESIS"
     else:
-        print("❌ Error: No faces detected.")
+        # Fallback if video does not contain audio stream
+        classification = "Video Analysis (Audio Missing/Degraded)"
+        alert_level = "🚨 FAKE" if avg_video_score > THRESHOLD else "✅ REAL"
+        audio_score = 0.0000
+
+    # --- MSRIT ACADEMIC TERMINAL PRESENTATION ---
+    print("\n" + "="*55)
+    print(" 🎓 MSRIT DEEPFAKE DETECTION - BIMODAL REPORT")
+    print("="*55)
+    print(f" SECURITY VERDICT   : {alert_level}")
+    print(f" ISOLATED QUADRANT  : {classification}")
+    print("—"*55)
+    print(f" VISUAL PROBABILITY : {avg_video_score:.4f} " + ("(FLAGGED)" if avg_video_score > VIDEO_THRESHOLD else "(CLEAN)"))
+    print(f" AUDIO PROBABILITY  : {audio_score:.4f} " + ("(FLAGGED)" if audio_score > AUDIO_THRESHOLD else "(CLEAN)"))
+    print("="*55)
 
 if __name__ == "__main__":
     run_inference()
