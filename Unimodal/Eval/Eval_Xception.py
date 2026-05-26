@@ -59,7 +59,7 @@ def Eval(args):
 
         def EVAL_classification(model, test_iterator, device):
             label_encoder = LabelEncoder()
-            enc = OneHotEncoder(sparse=False)
+            enc = OneHotEncoder(sparse_output=False)
 
             y_true=np.zeros((0,2),dtype=np.int8)
             y_pred=np.zeros((0,2),dtype=np.int8)

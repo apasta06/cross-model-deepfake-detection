@@ -7,9 +7,10 @@ tqdm==4.61.2
 sklearn
 scikit-learn
 pandas
+# Legacy full-project dependencies.
+# Recommended for the original training/evaluation code on Python 3.8.
+# For UI-only testing on newer Python versions, use requirements-ui.txt instead.
 streamlit
 opencv-python-headless
 Pillow
-# Legacy full-project dependencies.
-# Recommended for the original training/evaluation code on Python 3.8.
-# For UI-only testing on newer Python versions, use requirements-ui.txt instead
+

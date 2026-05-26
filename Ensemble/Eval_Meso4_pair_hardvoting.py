@@ -218,3 +218,4 @@ plt.title('MesoInception-4')
 plt.legend(loc="lower right")
 plt.show()
 print(result)
+>>>>>>>>> Temporary merge branch 2
