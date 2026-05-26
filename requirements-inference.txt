@@ -1,0 +1,14 @@
+# Inference dependencies for the FastAPI service and detect_video.py CLI.
+# Pinned loosely so newer Python versions (3.11+) can install without
+# spending forever on legacy wheel compilation. Adjust if you need
+# exact reproducibility for a specific torch/CUDA combo.
+numpy
+torch
+torchvision
+opencv-python-headless
+Pillow
+# detect_video.py extras — bimodal audio + face detection. Safe to remove
+# if you only need image/video frame inference via the API.
+librosa
+moviepy
+facenet-pytorch

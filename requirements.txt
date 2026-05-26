@@ -9,8 +9,7 @@ scikit-learn
 pandas
 # Legacy full-project dependencies.
 # Recommended for the original training/evaluation code on Python 3.8.
-# For UI-only testing on newer Python versions, use requirements-ui.txt instead.
-streamlit
+# For the FastAPI service layer, also install requirements-api.txt.
 opencv-python-headless
 Pillow
 
