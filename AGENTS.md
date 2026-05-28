@@ -73,9 +73,37 @@ cross-model-deepfake-detection/
 | `pip install -r requirements.txt` | Install legacy/full Python dependencies | Documented in repo; not executed in this session |
 | `pip install -r requirements-ui.txt` | Install Streamlit-focused Python dependencies | Documented in repo; not executed in this session |
 | `streamlit run streamlit_app.py` | Run Streamlit MVP app | Documented in repo; not executed in this session |
+| `source .venv/bin/activate && uvicorn api.main:app --reload --port 8000` | Run FastAPI backend | Executed successfully by user; backend serves `/api/v1` endpoints |
+| `curl http://localhost:8000/api/v1/health` | Check FastAPI liveness | Executed successfully by user; returned `{"status":"ok"}` |
+| `curl http://localhost:8000/api/v1/models` | List API model options | Executed successfully during this session |
+| `VITE_API_BASE=http://127.0.0.1:8000/api/v1 npm run dev` | Run React frontend connected to local API | User verified this fixes local CORS/localhost issue |
 | `npm run build` | Build standalone frontend | Executed successfully in `frontend/` during this session |
 | `npm run build-storybook` | Build Storybook static site | Executed successfully in `frontend/` during this session |
 | `npm run test:e2e` | Run Playwright E2E tests | Executed successfully in `frontend/` during this session |
+
+### Local API + Frontend Workflow
+
+For the current FastAPI + React integration, use two terminals:
+
+1. Backend from repository root:
+```bash
+source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000
+```
+
+2. Frontend from `frontend/`:
+```bash
+npm run dev
+```
+
+`frontend/package.json` sets `VITE_API_BASE=http://127.0.0.1:8000/api/v1` for `npm run dev`. Open the frontend at `http://127.0.0.1:5173` to avoid WSL/browser `localhost` resolution issues.
+
+The frontend loads models from `GET /api/v1/models`, defaults to `EFFICIENTB0`, uploads media to `POST /api/v1/analyze`, and displays the returned `AnalysisResult`.
+
+`EFFICIENTB0` uses the default root checkpoint `best_corrected_model.pt` when present. Other models need checkpoint environment variables before backend startup, for example:
+```bash
+CHECKPOINT_MESO4=Unimodal/weights/video/Meso4_realA_fakeC.pt uvicorn api.main:app --reload --port 8000
+```
 
 ---
 

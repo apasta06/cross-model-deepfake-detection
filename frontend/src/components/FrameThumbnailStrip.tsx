@@ -33,7 +33,16 @@ export function FrameThumbnailStrip({ frames, flaggedFrameIndices, selectedFrame
                 selected ? "border-forensic-blue ring-2 ring-forensic-blue/50" : "border-white/10 hover:border-forensic-blue/40"
               }`}
             >
-              <img src={frame.thumbnail_url} alt={`Frame ${frame.frame_index} at ${frame.timestamp_label}`} className="aspect-video w-full object-cover" />
+              {frame.thumbnail_url ? (
+                <img src={frame.thumbnail_url} alt={`Frame ${frame.frame_index} at ${frame.timestamp_label}`} className="aspect-video w-full object-cover" />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-slate-950/80 p-3 text-center">
+                  <div>
+                    <p className="font-mono text-sm text-white">Frame {frame.frame_index}</p>
+                    <p className="mt-1 text-xs text-forensic-muted">{frame.timestamp_label}</p>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2 p-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-forensic-muted">{frame.timestamp_label}</span>

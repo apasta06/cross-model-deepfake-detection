@@ -12,7 +12,16 @@ export function SelectedFramePanel({ frame, flaggedFrameIndices }: SelectedFrame
   return (
     <aside className="rounded-2xl border border-forensic-border bg-forensic-panel/80 p-4 shadow-forensic backdrop-blur" aria-label="Selected frame panel">
       <h2 className="text-lg font-semibold text-white">Selected frame details</h2>
-      <img src={frame.thumbnail_url} alt={`Selected frame ${frame.frame_index}`} className="mt-3 aspect-video w-full rounded-2xl border border-white/10 object-cover" />
+      {frame.thumbnail_url ? (
+        <img src={frame.thumbnail_url} alt={`Selected frame ${frame.frame_index}`} className="mt-3 aspect-video w-full rounded-2xl border border-white/10 object-cover" />
+      ) : (
+        <div className="mt-3 flex aspect-video w-full items-center justify-center rounded-2xl border border-white/10 bg-slate-950/70 p-4 text-center">
+          <div>
+            <p className="font-mono text-lg text-white">Frame {frame.frame_index}</p>
+            <p className="mt-1 text-sm text-forensic-muted">No extracted thumbnail returned by the API.</p>
+          </div>
+        </div>
+      )}
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
           <dt className="text-forensic-muted">Frame index</dt>

@@ -12,9 +12,9 @@ export function AppHeader({ retentionMessage }: AppHeaderProps) {
           Upload media, inspect frame-level fake probabilities, identify suspicious frames, and prepare audit-ready reports.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-sky-100">
-          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Upload complete</span>
-          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Model inference complete</span>
-          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Report ready</span>
+          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Upload media</span>
+          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Run model inference</span>
+          <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1">Export report</span>
         </div>
       </div>
       <div className="rounded-2xl border border-forensic-blue/35 bg-forensic-blue/10 p-3 text-xs leading-5 text-sky-100 md:max-w-xs">{retentionMessage}</div>

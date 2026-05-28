@@ -2,6 +2,15 @@ export type RiskKey = "likely_real" | "uncertain" | "likely_fake";
 
 export type ModelKey = "XCEPTION" | "MESO4" | "MESOINCEPTION4" | "EFFICIENTB0";
 
+export type ModelInfo = {
+  key: ModelKey;
+  description: string;
+};
+
+export type ModelListResponse = {
+  models: ModelInfo[];
+};
+
 export type MediaMetadata = {
   filename: string;
   filesize: number;
@@ -28,7 +37,7 @@ export type FrameResult = {
   fake_probability: number;
   risk_label: "Likely Real" | "Uncertain" | "Likely Fake";
   risk_key: RiskKey;
-  thumbnail_url?: string;
+  thumbnail_url?: string | null;
 };
 
 export type FrameStats = {
