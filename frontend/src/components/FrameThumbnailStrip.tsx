@@ -11,14 +11,14 @@ type FrameThumbnailStripProps = {
 
 export function FrameThumbnailStrip({ frames, flaggedFrameIndices, selectedFrameIndex, onSelectFrame }: FrameThumbnailStripProps) {
   return (
-    <section className="rounded-3xl border border-forensic-border bg-forensic-panel/80 p-5 shadow-forensic backdrop-blur" aria-label="Frame thumbnail strip">
+    <section className="rounded-2xl border border-forensic-border bg-forensic-panel/80 p-4 shadow-forensic backdrop-blur" aria-label="Frame thumbnail strip">
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white">Sampled frame evidence</h2>
+          <h2 className="text-lg font-semibold text-white">Sampled frame evidence</h2>
           <p className="text-sm text-forensic-muted">Click any frame to inspect timestamp and fake probability details.</p>
         </div>
       </div>
-      <div className="mt-5 flex gap-4 overflow-x-auto pb-2">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {frames.map((frame) => {
           const selected = frame.frame_index === selectedFrameIndex;
           const flagged = isFlaggedFrame(frame.frame_index, flaggedFrameIndices);
@@ -29,12 +29,12 @@ export function FrameThumbnailStrip({ frames, flaggedFrameIndices, selectedFrame
               aria-pressed={selected}
               aria-label={`Select frame ${frame.frame_index} at ${frame.timestamp_label} with fake probability ${formatPercent(frame.fake_probability)}`}
               onClick={() => onSelectFrame(frame.frame_index)}
-              className={`w-56 shrink-0 overflow-hidden rounded-2xl border bg-black/30 text-left transition ${
+              className={`w-full overflow-hidden rounded-2xl border bg-black/30 text-left transition ${
                 selected ? "border-forensic-blue ring-2 ring-forensic-blue/50" : "border-white/10 hover:border-forensic-blue/40"
               }`}
             >
               <img src={frame.thumbnail_url} alt={`Frame ${frame.frame_index} at ${frame.timestamp_label}`} className="aspect-video w-full object-cover" />
-              <div className="space-y-2 p-3 text-sm">
+              <div className="space-y-2 p-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-forensic-muted">{frame.timestamp_label}</span>
                   <span className="font-semibold text-white">{formatPercent(frame.fake_probability)}</span>

@@ -11,6 +11,7 @@ const riskForProbability = (probability: number): { risk_key: RiskKey; risk_labe
 };
 
 const probabilities = [0.18, 0.23, 0.41, 0.66, 0.79, 0.91, 0.87, 0.72, 0.58, 0.34, 0.28, 0.21];
+const thumbnailThemes = ["0f172a/38bdf8", "111827/a78bfa", "1e293b/f97316", "172554/facc15", "450a0a/fca5a5", "7f1d1d/fecaca"];
 
 const frameResults: FrameResult[] = probabilities.map((fake_probability, index) => ({
   frame_index: index * 42,
@@ -18,7 +19,7 @@ const frameResults: FrameResult[] = probabilities.map((fake_probability, index) 
   timestamp_label: `00:${String(Math.round(index * 1.8)).padStart(2, "0")}`,
   fake_probability,
   ...riskForProbability(fake_probability),
-  thumbnail_url: `https://placehold.co/320x180/111827/f3f4f6?text=Frame+${index + 1}`,
+  thumbnail_url: `https://placehold.co/640x360/${thumbnailThemes[index % thumbnailThemes.length]}?text=Evidence+Frame+${index + 1}`,
 }));
 
 export const mockAnalysisResult: AnalysisResult = {
@@ -29,7 +30,7 @@ export const mockAnalysisResult: AnalysisResult = {
   verdict: "Likely Fake",
   confidence_score: 0.89,
   risk_level: "likely_fake",
-  summary_text: "Likely manipulated. Four sampled frames crossed the warning threshold, concentrated around the middle of the clip.",
+  summary_text: "Likely manipulated. Four sampled frames crossed the warning threshold, concentrated around the middle of the clip. The review queue highlights the highest-risk timestamps for manual verification.",
   flagged_frame_indices: frameResults.filter((frame) => frame.fake_probability >= 0.65).map((frame) => frame.frame_index),
   frame_stats: {
     sampled_frames: frameResults.length,
@@ -40,14 +41,19 @@ export const mockAnalysisResult: AnalysisResult = {
   },
   evidence_paths: [
     {
-      label: "Video review",
+      label: "Uploaded media review",
       kind: "viewer",
-      description: "The original uploaded media is available in the forensic viewer for manual review.",
+      description: "The submitted clip is loaded in the forensic viewer with duration, resolution, and extracted-frame metadata.",
     },
     {
-      label: "Frame timeline",
+      label: "Frame-level model timeline",
       kind: "timeline",
       description: "Sampled frames are shown with per-frame fake probabilities for quick triage.",
+    },
+    {
+      label: "Audit report package",
+      kind: "report",
+      description: "Verdict summary, flagged timestamps, and frame evidence are ready for export.",
     },
   ],
   created_at: "2026-05-17T12:00:00Z",
@@ -64,8 +70,8 @@ export const mockAnalysisResult: AnalysisResult = {
     height: 1080,
   },
   frame_results: frameResults,
-  warnings: ["Mock result: thumbnails and model output are fixture data until the FastAPI backend is connected."],
+  warnings: [],
   report_payload: {
-    source: "frontend mock fixture",
+    source: "demo case review",
   },
 };

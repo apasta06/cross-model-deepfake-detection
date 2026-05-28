@@ -28,11 +28,11 @@ export function FrameRiskTimeline({ frames, flaggedFrameIndices, selectedFrameIn
   const polylinePoints = frames.map((frame, index) => `${pointX(index, frames.length)},${pointY(frame.fake_probability)}`).join(" ");
 
   return (
-    <section className="rounded-3xl border border-forensic-border bg-forensic-panel/80 p-5 shadow-forensic backdrop-blur" aria-label="Frame risk timeline">
-      <h2 className="text-xl font-semibold text-white">Frame fake-probability timeline</h2>
+    <section className="rounded-2xl border border-forensic-border bg-forensic-panel/80 p-4 shadow-forensic backdrop-blur" aria-label="Frame risk timeline">
+      <h2 className="text-lg font-semibold text-white">Frame fake-probability timeline</h2>
       <p className="mt-1 text-sm text-forensic-muted">Select any point to inspect that frame in detail.</p>
-      <div className="mt-4 overflow-x-auto">
-        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-56 min-w-[700px] w-full" role="img" aria-label="Frame probability timeline chart">
+      <div className="mt-4 w-full overflow-hidden">
+        <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-44 w-full" preserveAspectRatio="none" role="img" aria-label="Frame probability timeline chart">
           <rect x={PADDING} y={pointY(1)} width={WIDTH - PADDING * 2} height={pointY(0.74) - pointY(1)} fill="rgba(192,57,43,0.14)" />
           <rect x={PADDING} y={pointY(0.74)} width={WIDTH - PADDING * 2} height={pointY(0.35) - pointY(0.74)} fill="rgba(217,142,4,0.14)" />
           <rect x={PADDING} y={pointY(0.35)} width={WIDTH - PADDING * 2} height={pointY(0) - pointY(0.35)} fill="rgba(46,139,87,0.14)" />
