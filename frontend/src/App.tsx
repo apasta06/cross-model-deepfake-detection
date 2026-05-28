@@ -23,33 +23,32 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.16),transparent_32rem),linear-gradient(180deg,#0d1117_0%,#111827_45%,#0f172a_100%)] px-4 py-6 text-forensic-text sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.16),transparent_32rem),linear-gradient(180deg,#0d1117_0%,#111827_45%,#0f172a_100%)] px-3 py-4 text-forensic-text sm:px-4 lg:px-5">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4">
         <AppHeader retentionMessage="Uploads are processed locally. Raw media is deleted after analysis. Only audit metadata is retained unless you export a report." />
 
         <VerdictHero result={result} />
 
-        <section className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-          <div className="space-y-6">
-            <ForensicMediaViewer result={result} selectedFrame={selectedFrame} />
-            <FrameRiskTimeline
-              frames={result.frame_results}
-              flaggedFrameIndices={result.flagged_frame_indices}
-              selectedFrameIndex={selectedFrameIndex}
-              onSelectFrame={setSelectedFrameIndex}
-            />
-            <FrameThumbnailStrip
-              frames={result.frame_results}
-              flaggedFrameIndices={result.flagged_frame_indices}
-              selectedFrameIndex={selectedFrameIndex}
-              onSelectFrame={setSelectedFrameIndex}
-            />
-          </div>
-          <div className="space-y-6">
-            <SelectedFramePanel frame={selectedFrame} flaggedFrameIndices={result.flagged_frame_indices} />
-            <EvidencePanel result={result} />
-          </div>
+        <ForensicMediaViewer result={result} selectedFrame={selectedFrame} />
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <SelectedFramePanel frame={selectedFrame} flaggedFrameIndices={result.flagged_frame_indices} />
+          <EvidencePanel result={result} />
         </section>
+
+        <FrameRiskTimeline
+          frames={result.frame_results}
+          flaggedFrameIndices={result.flagged_frame_indices}
+          selectedFrameIndex={selectedFrameIndex}
+          onSelectFrame={setSelectedFrameIndex}
+        />
+
+        <FrameThumbnailStrip
+          frames={result.frame_results}
+          flaggedFrameIndices={result.flagged_frame_indices}
+          selectedFrameIndex={selectedFrameIndex}
+          onSelectFrame={setSelectedFrameIndex}
+        />
 
         <FrameEvidenceTable
           frames={result.frame_results}
