@@ -10,6 +10,7 @@ from __future__ import annotations
 import io
 import os
 import tempfile
+import base64
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -85,6 +86,7 @@ class VisualFrameScore:
     frame_index: int
     timestamp_seconds: float
     fake_probability: float
+    thumbnail_url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -136,6 +138,16 @@ def build_audio_transform():
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
     )
+
+
+def build_thumbnail_data_url(image, max_size: tuple[int, int] = (320, 320), quality: int = 80) -> str:
+    _require_inference_dependencies(("Pillow", Image))
+    thumbnail = image.copy().convert("RGB")
+    thumbnail.thumbnail(max_size)
+    buffer = io.BytesIO()
+    thumbnail.save(buffer, format="JPEG", quality=quality, optimize=True)
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/jpeg;base64,{encoded}"
 
 
 def default_video_checkpoint(base_dir: Optional[Path] = None) -> Path:
@@ -227,6 +239,10 @@ def analyze_visual_track(
                 face_pil.save(buffer, format="JPEG", quality=95)
                 buffer.seek(0)
                 face_pil_compressed = Image.open(buffer)
+                try:
+                    thumbnail_url = build_thumbnail_data_url(face_pil_compressed)
+                except Exception:
+                    thumbnail_url = None
 
                 face_tensor = transform_video(face_pil_compressed).unsqueeze(0).to(device)
                 output = video_model(face_tensor)
@@ -237,6 +253,7 @@ def analyze_visual_track(
                         frame_index=int(frame_index),
                         timestamp_seconds=round(timestamp, 2),
                         fake_probability=float(probability),
+                        thumbnail_url=thumbnail_url,
                     )
                 )
 

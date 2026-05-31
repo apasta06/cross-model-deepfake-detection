@@ -6,10 +6,14 @@ import { mockAnalysisResult } from "../src/mocks/analysisResult";
 const apiResult = {
   ...mockAnalysisResult,
   analysis_id: "test-analysis-001",
-  frame_results: mockAnalysisResult.frame_results.map((frame) => ({ ...frame, thumbnail_url: null })),
 };
 
-async function mockApi(page: Page) {
+const apiResultWithoutThumbnails = {
+  ...apiResult,
+  frame_results: apiResult.frame_results.map((frame) => ({ ...frame, thumbnail_url: null })),
+};
+
+async function mockApi(page: Page, result = apiResult) {
   await page.route("**/api/v1/models", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -24,7 +28,7 @@ async function mockApi(page: Page) {
   await page.route("**/api/v1/analyze", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify(apiResult),
+      body: JSON.stringify(result),
     });
   });
 }
@@ -40,11 +44,8 @@ async function uploadAndAnalyze(page: Page) {
   await page.getByRole("button", { name: "Analyze" }).click();
 }
 
-test.beforeEach(async ({ page }) => {
-  await mockApi(page);
-});
-
 test("renders upload controls and loads model options", async ({ page }) => {
+  await mockApi(page);
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: /ML evidence review workstation/i })).toBeVisible();
@@ -54,15 +55,19 @@ test("renders upload controls and loads model options", async ({ page }) => {
 });
 
 test("uploads media and displays backend analysis result", async ({ page }) => {
+  await mockApi(page);
   await uploadAndAnalyze(page);
 
   await expect(page.getByText("PARTIAL FORGERY (Visual Identity Swap)").first()).toBeVisible();
   await expect(page.getByLabel("Analysis summary").getByText("57.0%")).toBeVisible();
   await expect(page.getByLabel(/Uploaded video/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Sampled frame evidence/i })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Frame thumbnail strip" }).getByRole("img").first()).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Selected frame panel" }).getByRole("img", { name: /Selected frame/i })).toBeVisible();
 });
 
 test("renders frame placeholders when API does not provide thumbnails", async ({ page }) => {
+  await mockApi(page, apiResultWithoutThumbnails);
   await uploadAndAnalyze(page);
 
   const strip = page.getByRole("region", { name: "Frame thumbnail strip" });
@@ -74,16 +79,19 @@ test("renders frame placeholders when API does not provide thumbnails", async ({
 });
 
 test("selecting a frame updates selected frame panel", async ({ page }) => {
+  await mockApi(page);
   await uploadAndAnalyze(page);
 
   await page.getByRole("button", { name: /Select frame 42/i }).first().click({ force: true });
 
   const panel = page.getByRole("complementary", { name: "Selected frame panel" });
-  await expect(panel.getByText("Frame 42")).toBeVisible();
+  await expect(panel.getByRole("img", { name: /Selected frame 42/i })).toBeVisible();
+  await expect(panel.getByText("42", { exact: true })).toBeVisible();
   await expect(panel.getByText("23.0%")).toBeVisible();
 });
 
 test("shows report download links after analysis", async ({ page }) => {
+  await mockApi(page);
   await uploadAndAnalyze(page);
 
   await expect(page.getByRole("link", { name: "Download HTML report" })).toHaveAttribute("href", /test-analysis-001\/report\?format=html$/);

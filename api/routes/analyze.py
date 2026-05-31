@@ -109,6 +109,7 @@ def _build_frame_result(score: VisualFrameScore) -> dict:
         "fake_probability": score.fake_probability,
         "risk_label": risk_label,
         "risk_key": risk_key,
+        "thumbnail_url": score.thumbnail_url,
     }
 
 
