@@ -11,8 +11,8 @@ import { FrameRiskTimeline } from "./components/FrameRiskTimeline";
 import { analyzeMedia, getModels } from "./lib/api";
 import type { AnalysisResult, ModelInfo, ModelKey } from "./types/analysis";
 
-const DEFAULT_SAMPLE_FRAMES = 12;
-const DEFAULT_MODEL: ModelKey = "EFFICIENTB0";
+const DEFAULT_SAMPLE_FRAMES = 20;
+const DEFAULT_MODEL: ModelKey = "MULTIMODAL_EFFICIENTB0";
 
 function clampSampleFrames(value: number): number {
   if (!Number.isFinite(value)) {
@@ -80,7 +80,7 @@ function App() {
 
   async function handleAnalyze() {
     if (!selectedFile || !selectedModel) {
-      setError("Choose a media file and model before running analysis.");
+      setError("Choose a video file before running analysis.");
       return;
     }
     setIsAnalyzing(true);

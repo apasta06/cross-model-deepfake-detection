@@ -1,6 +1,6 @@
 export type RiskKey = "likely_real" | "uncertain" | "likely_fake";
 
-export type ModelKey = "XCEPTION" | "MESO4" | "MESOINCEPTION4" | "EFFICIENTB0";
+export type ModelKey = "MULTIMODAL_EFFICIENTB0";
 
 export type ModelInfo = {
   key: ModelKey;

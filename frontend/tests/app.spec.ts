@@ -15,9 +15,7 @@ async function mockApi(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         models: [
-          { key: "XCEPTION", description: "Frame-wise Xception classifier using a compatible checkpoint." },
-          { key: "MESO4", description: "Frame-wise Meso4 classifier using a compatible checkpoint." },
-          { key: "EFFICIENTB0", description: "Frame-wise EfficientNet-B0 classifier using a compatible checkpoint." },
+          { key: "MULTIMODAL_EFFICIENTB0", description: "Multimodal EfficientNet-B0 video/audio deepfake detector." },
         ],
       }),
     });
@@ -38,8 +36,7 @@ async function uploadAndAnalyze(page: Page) {
     mimeType: "video/mp4",
     buffer: Buffer.from("sample video bytes"),
   });
-  await page.getByLabel("Select analysis model").selectOption("MESO4");
-  await page.getByLabel("Sample frames").fill("12");
+  await page.getByLabel("Sample frames").fill("20");
   await page.getByRole("button", { name: "Analyze" }).click();
 }
 
@@ -52,15 +49,15 @@ test("renders upload controls and loads model options", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: /ML evidence review workstation/i })).toBeVisible();
   await expect(page.getByRole("region", { name: "Upload analysis controls" })).toBeVisible();
-  await expect(page.getByLabel("Select analysis model")).toContainText("EFFICIENTB0");
+  await expect(page.getByLabel("Analysis model")).toContainText("Multimodal EfficientNet-B0");
   await expect(page.getByRole("region", { name: "Empty analysis state" })).toBeVisible();
 });
 
 test("uploads media and displays backend analysis result", async ({ page }) => {
   await uploadAndAnalyze(page);
 
-  await expect(page.getByText("Likely Fake").first()).toBeVisible();
-  await expect(page.getByText("89.0%")).toBeVisible();
+  await expect(page.getByText("PARTIAL FORGERY (Visual Identity Swap)").first()).toBeVisible();
+  await expect(page.getByLabel("Analysis summary").getByText("57.0%")).toBeVisible();
   await expect(page.getByLabel(/Uploaded video/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Sampled frame evidence/i })).toBeVisible();
 });

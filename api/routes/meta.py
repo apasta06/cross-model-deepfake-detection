@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from api.deps import MULTIMODAL_MODEL_DESCRIPTION, MULTIMODAL_MODEL_KEY
 from api.models import HealthResponse, ModelInfo, ModelListResponse
-from ui_mvp.config import MODEL_OPTIONS
 
 router = APIRouter(tags=["meta"])
 
@@ -22,13 +22,12 @@ def health() -> HealthResponse:
 
 @router.get("/models", response_model=ModelListResponse)
 def list_models() -> ModelListResponse:
-    """List the deepfake detection models the /analyze endpoint accepts.
-
-    Pulled from ui_mvp.config.MODEL_OPTIONS so frontend and API agree on
-    the canonical model catalog.
-    """
-    models = [
-        ModelInfo(key=key, description=description)
-        for key, description in MODEL_OPTIONS.items()
-    ]
-    return ModelListResponse(models=models)
+    """List the single real multimodal detector accepted by /analyze."""
+    return ModelListResponse(
+        models=[
+            ModelInfo(
+                key=MULTIMODAL_MODEL_KEY,
+                description=MULTIMODAL_MODEL_DESCRIPTION,
+            )
+        ]
+    )

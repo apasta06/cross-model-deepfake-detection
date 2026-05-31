@@ -1,6 +1,6 @@
 import type { ModelInfo, ModelKey } from "../types/analysis";
 
-const ACCEPTED_MEDIA = ".jpg,.jpeg,.png,.bmp,.mp4,.avi,.mov,.mkv,.mts,.webm";
+const ACCEPTED_MEDIA = ".mp4,.avi,.mov,.mkv,.mts,.webm";
 
 type AnalysisControlsProps = {
   models: ModelInfo[];
@@ -24,7 +24,6 @@ export function AnalysisControls({
   isLoadingModels,
   isAnalyzing,
   error,
-  onModelChange,
   onSampleFramesChange,
   onFileChange,
   onAnalyze,
@@ -36,7 +35,7 @@ export function AnalysisControls({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-white">Upload media for analysis</h2>
-          <p className="mt-1 text-sm text-forensic-muted">Choose an image or video, select a model, then run backend inference.</p>
+          <p className="mt-1 text-sm text-forensic-muted">Choose a video, then run multimodal backend inference.</p>
         </div>
         <span className="rounded-full border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
           {isLoadingModels ? "Loading models" : "API ready"}
@@ -55,25 +54,12 @@ export function AnalysisControls({
           />
         </label>
 
-        <label className="block">
+        <div className="block">
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-forensic-muted">Model</span>
-          <select
-            value={selectedModel}
-            onChange={(event) => onModelChange(event.target.value as ModelKey)}
-            disabled={isLoadingModels || models.length === 0}
-            className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:text-forensic-muted"
-            aria-label="Select analysis model"
-          >
-            <option value="" disabled>
-              {isLoadingModels ? "Loading models..." : "Select a model"}
-            </option>
-            {models.map((model) => (
-              <option key={model.key} value={model.key}>
-                {model.key}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div className="mt-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2 text-sm text-white" aria-label="Analysis model">
+            {isLoadingModels ? "Loading model..." : models[0]?.description || "Multimodal EfficientNet-B0"}
+          </div>
+        </div>
 
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-[0.18em] text-forensic-muted">Sample frames</span>
