@@ -23,18 +23,27 @@ Violating any of them is a hard error - not a judgment call.
 
 ### Known Facts
 - **Language**: Python 3.x (repo includes `requirements.txt` and `requirements-ui.txt`)
-- **UI Framework**: Streamlit
-- **ML Stack**: PyTorch-based deepfake model integration in MVP analysis pipeline
+- **UI Frameworks**: Streamlit legacy MVP and React/Vite frontend
+- **ML Stack**: PyTorch multimodal EfficientNet-B0 detector exposed through FastAPI
 - **Repository Type**: Research + application code for cross-model deepfake detection
 - **Main app entry point**: `streamlit_app.py`
+- **FastAPI entry point**: `api/main.py`
+- **Current inference module**: `api/multimodal_detect.py` refactored from `detect_video.py`
 - **Legacy CLI entry points**: `train_main.py`, `eval_main.py`
 
 ### Project Structure
 ```
 cross-model-deepfake-detection/
 ├── streamlit_app.py
+├── detect_video.py
 ├── train_main.py
 ├── eval_main.py
+├── api/
+│   ├── main.py
+│   ├── deps.py
+│   ├── models.py
+│   ├── multimodal_detect.py
+│   └── routes/
 ├── ui_mvp/
 │   ├── analysis.py
 │   ├── config.py
@@ -52,6 +61,7 @@ cross-model-deepfake-detection/
 ### Package / Module Areas
 **Confirmed top-level areas:**
 - `ui_mvp/` - Streamlit MVP analysis, reporting, storage, and schemas
+- `api/` - FastAPI HTTP layer and multimodal detector integration
 - `tests/` - tests for MVP and supporting behavior
 - `Unimodal/` - unimodal training and evaluation code
 - `Multimodal/` - multimodal code
@@ -73,9 +83,43 @@ cross-model-deepfake-detection/
 | `pip install -r requirements.txt` | Install legacy/full Python dependencies | Documented in repo; not executed in this session |
 | `pip install -r requirements-ui.txt` | Install Streamlit-focused Python dependencies | Documented in repo; not executed in this session |
 | `streamlit run streamlit_app.py` | Run Streamlit MVP app | Documented in repo; not executed in this session |
+| `source .venv/bin/activate && uvicorn api.main:app --reload --port 8000` | Run FastAPI backend | Executed successfully by user; backend serves `/api/v1` endpoints |
+| `curl http://localhost:8000/api/v1/health` | Check FastAPI liveness | Executed successfully by user; returned `{"status":"ok"}` |
+| `curl http://localhost:8000/api/v1/models` | List API model options | Executed successfully during this session |
+| `VITE_API_BASE=http://127.0.0.1:8000/api/v1 npm run dev` | Run React frontend connected to local API | User verified this fixes local CORS/localhost issue |
 | `npm run build` | Build standalone frontend | Executed successfully in `frontend/` during this session |
 | `npm run build-storybook` | Build Storybook static site | Executed successfully in `frontend/` during this session |
 | `npm run test:e2e` | Run Playwright E2E tests | Executed successfully in `frontend/` during this session |
+| `python3 -m py_compile api/routes/analyze.py api/routes/meta.py api/deps.py api/models.py api/multimodal_detect.py tests/test_multimodal_detect.py` | Syntax-check changed backend files | Executed successfully during multimodal API wiring |
+| `python3 -m unittest tests/test_multimodal_detect.py` | Run lightweight multimodal fusion tests | Executed successfully during multimodal API wiring |
+
+### Local API + Frontend Workflow
+
+For the current FastAPI + React integration, use two terminals:
+
+1. Backend from repository root:
+```bash
+source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000
+```
+
+2. Frontend from `frontend/`:
+```bash
+npm run dev
+```
+
+`frontend/package.json` sets `VITE_API_BASE=http://127.0.0.1:8000/api/v1` for `npm run dev`. Open the frontend at `http://127.0.0.1:5173` to avoid WSL/browser `localhost` resolution issues.
+
+The frontend loads the model catalog from `GET /api/v1/models`, which currently exposes only `MULTIMODAL_EFFICIENTB0`. The frontend uploads videos to `POST /api/v1/analyze` and displays the returned `AnalysisResult`.
+
+The multimodal API requires the visual checkpoint. It resolves the video checkpoint from `CHECKPOINT_MULTIMODAL_VIDEO`, `VIDEO_MODEL_PATH`, or root `best_corrected_model.pt`. The audio checkpoint is optional and resolves from `CHECKPOINT_MULTIMODAL_AUDIO`, `AUDIO_MODEL_PATH`, or root `best_audio_model.pt`. If audio weights or audio track are missing, the API returns a visual-only fallback result with warnings.
+
+Example backend startup with explicit checkpoints:
+```bash
+CHECKPOINT_MULTIMODAL_VIDEO=best_corrected_model.pt CHECKPOINT_MULTIMODAL_AUDIO=best_audio_model.pt uvicorn api.main:app --reload --port 8000
+```
+
+Current branch for multimodal API wiring: `wire-multimodal-detector-api`. Latest implementation commit: `6c31df6 Wire API to multimodal detector`.
 
 ---
 

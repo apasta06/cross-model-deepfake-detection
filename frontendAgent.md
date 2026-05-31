@@ -4,6 +4,7 @@
 
 Use this guide when an OpenCode agent is assigned frontend work in this repository.
 The frontend lives in `frontend/` and is currently a standalone React + TypeScript app with Tailwind, Storybook, and Playwright.
+It is connected to the FastAPI backend under `/api/v1` and targets the single real model key `MULTIMODAL_EFFICIENTB0`.
 
 ## Scope
 
@@ -36,6 +37,17 @@ Do not modify backend Python/Streamlit files unless explicitly requested.
 - Storybook stories: `frontend/src/**/*.stories.tsx`
 - Playwright tests: `frontend/tests/`
 
+## Current API Contract
+
+- Model catalog endpoint: `GET /api/v1/models`
+- Analyze endpoint: `POST /api/v1/analyze`
+- Supported model key: `MULTIMODAL_EFFICIENTB0`
+- Upload type: video only (`.mp4`, `.avi`, `.mov`, `.mkv`, `.mts`, `.webm`)
+- Default sample frames: `20`
+- Frontend sends `model=MULTIMODAL_EFFICIENTB0` and displays a static model label instead of a dropdown.
+- The backend returns `AnalysisResult`, matching `frontend/src/types/analysis.ts`.
+- Multimodal details are available in `result.report_payload`, including `classification`, `video_score`, `audio_score`, `fused_score`, `audio_available`, and thresholds.
+
 ## ML-Evidence UX Constraints (Important)
 
 When building UI features, preserve these core product goals:
@@ -45,6 +57,8 @@ When building UI features, preserve these core product goals:
 - Preserve risk semantics (`likely_real`, `uncertain`, `likely_fake`).
 - Keep flagged-frame signaling visible and consistent.
 - Keep timeline/thumbnail/table/frame-detail selection synchronized.
+- Preserve the distinction between final multimodal `verdict`, fused `confidence_score`, and per-frame visual `fake_probability`.
+- Treat audio fallback warnings as user-visible evidence, not fatal frontend errors.
 
 If you change any of the above behavior, call it out explicitly in your summary.
 

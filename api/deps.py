@@ -14,6 +14,9 @@ from typing import Dict, Optional
 
 from ui_mvp.config import BASE_DIR, MAX_UPLOAD_SIZE_MB, MODEL_OPTIONS
 
+MULTIMODAL_MODEL_KEY = "MULTIMODAL_EFFICIENTB0"
+MULTIMODAL_MODEL_DESCRIPTION = "Multimodal EfficientNet-B0 video/audio deepfake detector."
+
 
 # --- Settings ------------------------------------------------------------
 
@@ -85,3 +88,36 @@ def resolve_checkpoint(model_key: str) -> Optional[Path]:
     if candidate and candidate.exists():
         return candidate
     return None
+
+
+def _resolve_existing_path(env_names: tuple[str, ...], default_name: str) -> Optional[Path]:
+    for env_name in env_names:
+        env_value = os.getenv(env_name)
+        if not env_value:
+            continue
+        candidate = Path(env_value)
+        if not candidate.is_absolute():
+            candidate = get_settings().base_dir / candidate
+        if candidate.exists():
+            return candidate
+
+    default_candidate = get_settings().base_dir / default_name
+    if default_candidate.exists():
+        return default_candidate
+    return None
+
+
+def resolve_multimodal_video_checkpoint() -> Optional[Path]:
+    """Resolve the required visual checkpoint for the multimodal detector."""
+    return _resolve_existing_path(
+        env_names=("CHECKPOINT_MULTIMODAL_VIDEO", "VIDEO_MODEL_PATH"),
+        default_name="best_corrected_model.pt",
+    )
+
+
+def resolve_multimodal_audio_checkpoint() -> Optional[Path]:
+    """Resolve the optional audio checkpoint for multimodal detection."""
+    return _resolve_existing_path(
+        env_names=("CHECKPOINT_MULTIMODAL_AUDIO", "AUDIO_MODEL_PATH"),
+        default_name="best_audio_model.pt",
+    )

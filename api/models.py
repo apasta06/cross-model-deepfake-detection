@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 RiskKey = Literal["likely_real", "uncertain", "likely_fake"]
-ModelKey = Literal["XCEPTION", "MESO4", "MESOINCEPTION4", "EFFICIENTB0"]
+ModelKey = Literal["MULTIMODAL_EFFICIENTB0"]
 MediaKind = Literal["video", "image"]
 RiskLabel = Literal["Likely Real", "Uncertain", "Likely Fake"]
 

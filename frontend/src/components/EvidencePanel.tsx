@@ -1,4 +1,5 @@
 import type { AnalysisResult } from "../types/analysis";
+import { reportUrl } from "../lib/api";
 
 type EvidencePanelProps = {
   result: AnalysisResult;
@@ -31,6 +32,20 @@ export function EvidencePanel({ result }: EvidencePanelProps) {
           <p className="text-forensic-muted">Export status</p>
           <p className="mt-1 font-semibold text-white">Ready</p>
         </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a
+          href={reportUrl(result.analysis_id, "html")}
+          className="rounded-xl border border-forensic-blue/40 bg-forensic-blue/10 px-3 py-2 text-sm font-semibold text-sky-100 hover:border-forensic-blue"
+        >
+          Download HTML report
+        </a>
+        <a
+          href={reportUrl(result.analysis_id, "json")}
+          className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm font-semibold text-white hover:border-forensic-blue/50"
+        >
+          Download JSON report
+        </a>
       </div>
     </aside>
   );
