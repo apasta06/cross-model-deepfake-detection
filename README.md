@@ -1,5 +1,87 @@
 # FakeAVCeleb: A Novel Audio-Video Multimodal Deepfake Dataset
 
+## Project Application Status
+
+This repository now also contains a FastAPI + React application for cross-model deepfake detection.
+
+Current app path:
+
+- Backend entry point: `api/main.py`
+- Inference module: `api/multimodal_detect.py`
+- Original CLI-style inference reference: `detect_video.py`
+- Frontend: `frontend/`
+- Active model key: `MULTIMODAL_EFFICIENTB0`
+- Upload support: video only
+- API endpoint: `POST /api/v1/analyze`
+
+The FastAPI endpoint wraps the real multimodal EfficientNet-B0 detector refactored from `detect_video.py`. It performs visual frame scoring plus optional audio scoring and returns the frontend-compatible `AnalysisResult` shape.
+
+### Run Backend
+
+```bash
+source .venv/bin/activate
+uvicorn api.main:app --reload --port 8000
+```
+
+Check the API:
+
+```bash
+curl http://localhost:8000/api/v1/health
+curl http://localhost:8000/api/v1/models
+```
+
+`GET /api/v1/models` currently returns only `MULTIMODAL_EFFICIENTB0`.
+
+### Checkpoints
+
+The visual checkpoint is required. Resolution order:
+
+1. `CHECKPOINT_MULTIMODAL_VIDEO`
+2. `VIDEO_MODEL_PATH`
+3. Root `best_corrected_model.pt`
+
+The audio checkpoint is optional. Resolution order:
+
+1. `CHECKPOINT_MULTIMODAL_AUDIO`
+2. `AUDIO_MODEL_PATH`
+3. Root `best_audio_model.pt`
+
+If the audio checkpoint or audio track is missing, the API runs visual-only fallback and returns warnings.
+
+Example:
+
+```bash
+CHECKPOINT_MULTIMODAL_VIDEO=best_corrected_model.pt CHECKPOINT_MULTIMODAL_AUDIO=best_audio_model.pt uvicorn api.main:app --reload --port 8000
+```
+
+### Run Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open `http://127.0.0.1:5173` for local development.
+
+### Verify
+
+Backend lightweight checks:
+
+```bash
+python3 -m py_compile api/routes/analyze.py api/routes/meta.py api/deps.py api/models.py api/multimodal_detect.py tests/test_multimodal_detect.py
+python3 -m unittest tests/test_multimodal_detect.py
+```
+
+Frontend checks:
+
+```bash
+cd frontend
+npm run build
+npm run test:e2e
+```
+
+For the full API contract, see `API.md`.
+
 ![Header](images/teaser.png)
 
 ## Overview
