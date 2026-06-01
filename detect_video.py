@@ -17,7 +17,7 @@ from moviepy import VideoFileClip
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # --- 1. CONFIGURATION ---
-VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\RealVideo-RealAudio\Caucasian (American)\women\id00231\00037.mp4"
+VIDEO_PATH = r"E:\DeepFake Project\FakeAVCeleb_v1.2\FakeAVCeleb_v1.2\FakeVideo-FakeAudio\African\men\id01717\00005_id00518_wavtolip.mp4"
 VIDEO_MODEL_PATH = r"best_corrected_model.pt" 
 AUDIO_MODEL_PATH = r"best_audio_model.pt" 
 
