@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { AnalysisControls } from "./components/AnalysisControls";
 import { VerdictHero } from "./components/VerdictHero";
+import { MultimodalEvidence } from "./components/MultimodalEvidence";
 import { ForensicMediaViewer } from "./components/ForensicMediaViewer";
 import { EvidencePanel } from "./components/EvidencePanel";
 import { FrameThumbnailStrip } from "./components/FrameThumbnailStrip";
@@ -121,6 +122,8 @@ function App() {
         {result && selectedFrame ? (
           <>
             <VerdictHero result={result} />
+
+            {result.report_payload ? <MultimodalEvidence payload={result.report_payload} /> : null}
 
             <ForensicMediaViewer result={result} selectedFrame={selectedFrame} mediaPreviewUrl={mediaPreviewUrl} />
 

@@ -40,6 +40,20 @@ export type FrameResult = {
   thumbnail_url?: string | null;
 };
 
+export type MultimodalPayload = {
+  classification: string;
+  alert_level?: string;
+  video_score: number;
+  audio_score: number | null;
+  fused_score?: number;
+  video_threshold: number;
+  audio_threshold: number;
+  audio_available: boolean;
+  sampled_visual_frames?: number;
+  model_family?: string;
+  warnings?: string[];
+};
+
 export type FrameStats = {
   sampled_frames: number;
   fake_frames: number;
@@ -65,7 +79,7 @@ export type AnalysisResult = {
   media_metadata: MediaMetadata;
   frame_results: FrameResult[];
   warnings: string[];
-  report_payload?: Record<string, unknown>;
+  report_payload?: MultimodalPayload;
 };
 
 export type HistoryRecord = {
