@@ -10,9 +10,11 @@ type AnalysisControlsProps = {
   isLoadingModels: boolean;
   isAnalyzing: boolean;
   error: string | null;
+  generateHeatmaps: boolean;
   onModelChange: (model: ModelKey) => void;
   onSampleFramesChange: (sampleFrames: number) => void;
   onFileChange: (file: File | null) => void;
+  onGenerateHeatmapsChange: (value: boolean) => void;
   onAnalyze: () => void;
 };
 
@@ -24,8 +26,10 @@ export function AnalysisControls({
   isLoadingModels,
   isAnalyzing,
   error,
+  generateHeatmaps,
   onSampleFramesChange,
   onFileChange,
+  onGenerateHeatmapsChange,
   onAnalyze,
 }: AnalysisControlsProps) {
   const canAnalyze = Boolean(selectedFile && selectedModel && !isAnalyzing && !isLoadingModels);
@@ -83,6 +87,22 @@ export function AnalysisControls({
           {isAnalyzing ? "Analyzing..." : "Analyze"}
         </button>
       </div>
+
+      <label className="mt-3 flex items-start gap-2.5 rounded-xl border border-white/10 bg-slate-950/50 p-3">
+        <input
+          type="checkbox"
+          checked={generateHeatmaps}
+          onChange={(event) => onGenerateHeatmapsChange(event.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900 accent-forensic-blue"
+          aria-label="Generate heatmaps"
+        />
+        <span>
+          <span className="block text-sm font-medium text-white">Generate heatmaps (slower)</span>
+          <span className="mt-0.5 block text-xs text-forensic-muted">
+            Runs Grad-CAM explainability per frame to show which face regions drove the score. Increases analysis time, especially on CPU.
+          </span>
+        </span>
+      </label>
 
       {selectedFile ? <p className="mt-3 text-xs text-forensic-muted">Selected: {selectedFile.name}</p> : null}
       {error ? <div className="mt-3 rounded-xl border border-forensic-fake/40 bg-forensic-fake/10 p-3 text-sm text-red-100">{error}</div> : null}

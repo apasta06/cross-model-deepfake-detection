@@ -110,6 +110,10 @@ def _build_frame_result(score: VisualFrameScore) -> dict:
         "risk_label": risk_label,
         "risk_key": risk_key,
         "thumbnail_url": score.thumbnail_url,
+        "heatmap_url": score.heatmap_url,
+        "face_box": list(score.face_box) if score.face_box else None,
+        "frame_width": score.frame_width,
+        "frame_height": score.frame_height,
     }
 
 
@@ -236,6 +240,10 @@ async def analyze(
         le=120,
         description="Frames to sample from video. Defaults to 20 to match detect_video.py.",
     ),
+    generate_heatmaps: bool = Form(
+        False,
+        description="Opt-in Grad-CAM heatmaps per frame. Slower, especially on CPU.",
+    ),
 ) -> AnalysisResultModel:
     if model != MULTIMODAL_MODEL_KEY:
         raise HTTPException(
@@ -280,6 +288,7 @@ async def analyze(
                     video_checkpoint=video_checkpoint,
                     audio_checkpoint=audio_checkpoint,
                     sample_frames=frames,
+                    generate_heatmaps=generate_heatmaps,
                 ),
             )
         except MultimodalDetectionError as exc:

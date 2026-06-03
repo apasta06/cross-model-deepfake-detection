@@ -11,9 +11,12 @@ import io
 import os
 import tempfile
 import base64
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 try:  # Heavy inference dependencies are optional for lightweight unit tests.
     import cv2
@@ -78,6 +81,7 @@ class MultimodalConfig:
     audio_threshold: float = AUDIO_THRESHOLD
     temperature: float = TEMPERATURE
     sample_frames: int = 20
+    generate_heatmaps: bool = False
     device: torch.device = DEVICE
 
 
@@ -87,6 +91,10 @@ class VisualFrameScore:
     timestamp_seconds: float
     fake_probability: float
     thumbnail_url: Optional[str] = None
+    heatmap_url: Optional[str] = None
+    face_box: Optional[tuple] = None
+    frame_width: Optional[int] = None
+    frame_height: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -196,6 +204,7 @@ def analyze_visual_track(
     sample_frames: int,
     temperature: float,
     device: torch.device = DEVICE,
+    generate_heatmaps: bool = False,
 ) -> list[VisualFrameScore]:
     _require_inference_dependencies(
         ("cv2", cv2),
@@ -205,6 +214,7 @@ def analyze_visual_track(
         ("facenet_pytorch", MTCNN),
     )
     capture = cv2.VideoCapture(str(video_path))
+    grad_cam = None
     try:
         if not capture.isOpened():
             raise MultimodalDetectionError("Unable to open the uploaded video.")
@@ -220,14 +230,30 @@ def analyze_visual_track(
         scores: list[VisualFrameScore] = []
 
         transform_video = build_video_transform()
-        with torch.no_grad():
-            for frame_index in sample_indices:
-                capture.set(cv2.CAP_PROP_POS_FRAMES, int(frame_index))
-                ok, frame = capture.read()
-                if not ok:
-                    continue
 
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Grad-CAM is opt-in. Created once and reused across frames; torn
+        # down in the finally block. Failure to init must not break scoring.
+        if generate_heatmaps:
+            try:
+                from api.gradcam import GradCAM
+
+                grad_cam = GradCAM(video_model)
+            except Exception:
+                logger.exception("[gradcam-diagnostic] GradCAM init failed; heatmaps disabled for this run")
+                grad_cam = None
+
+        for frame_index in sample_indices:
+            capture.set(cv2.CAP_PROP_POS_FRAMES, int(frame_index))
+            ok, frame = capture.read()
+            if not ok:
+                continue
+
+            frame_height, frame_width = frame.shape[:2]
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Scoring path stays grad-free so the frame score is identical
+            # whether or not heatmaps are requested.
+            with torch.no_grad():
                 face_img = mtcnn(frame_rgb)
                 if face_img is None:
                     continue
@@ -247,21 +273,84 @@ def analyze_visual_track(
                 face_tensor = transform_video(face_pil_compressed).unsqueeze(0).to(device)
                 output = video_model(face_tensor)
                 probability = torch.sigmoid(output / temperature).item()
-                timestamp = (float(frame_index) / fps) if fps else 0.0
-                scores.append(
-                    VisualFrameScore(
-                        frame_index=int(frame_index),
-                        timestamp_seconds=round(timestamp, 2),
-                        fake_probability=float(probability),
-                        thumbnail_url=thumbnail_url,
-                    )
+
+            # Heatmap path (opt-in). Runs its own grad-enabled forward/
+            # backward inside GradCAM.generate; never touches `probability`.
+            heatmap_url: Optional[str] = None
+            face_box: Optional[tuple] = None
+            if grad_cam is not None:
+                try:
+                    box = _detect_primary_face_box(mtcnn, frame_rgb, frame_width, frame_height)
+                    if box is not None:
+                        cam = grad_cam.generate(face_tensor)
+                        face_bgr = face_np[:, :, ::-1].copy()  # RGB face crop -> BGR
+                        overlay_bytes = grad_cam.render_overlay(cam, face_bgr)
+                        heatmap_url = grad_cam.to_data_url(overlay_bytes)
+                        face_box = box
+                        logger.info("[gradcam-diagnostic] frame %s: heatmap OK, box=%s", int(frame_index), box)
+                    else:
+                        logger.warning("[gradcam-diagnostic] frame %s: no usable face box (detect returned None/empty)", int(frame_index))
+                except Exception:
+                    # A single frame failing heatmap generation is non-fatal;
+                    # the frame keeps its score and simply has no overlay.
+                    logger.exception("[gradcam-diagnostic] frame %s: heatmap generation raised", int(frame_index))
+                    heatmap_url = None
+                    face_box = None
+
+            timestamp = (float(frame_index) / fps) if fps else 0.0
+            scores.append(
+                VisualFrameScore(
+                    frame_index=int(frame_index),
+                    timestamp_seconds=round(timestamp, 2),
+                    fake_probability=float(probability),
+                    thumbnail_url=thumbnail_url,
+                    heatmap_url=heatmap_url,
+                    face_box=face_box,
+                    frame_width=int(frame_width) if face_box is not None else None,
+                    frame_height=int(frame_height) if face_box is not None else None,
                 )
+            )
 
         if not scores:
             raise MultimodalDetectionError("Frame extraction failed. Face cannot be tracked.")
         return scores
     finally:
+        if grad_cam is not None:
+            grad_cam.cleanup()
         capture.release()
+
+
+def _detect_primary_face_box(mtcnn, frame_rgb, frame_width: int, frame_height: int) -> Optional[tuple]:
+    """Return the highest-confidence face box (x1,y1,x2,y2) clamped to frame.
+
+    Uses mtcnn.detect to recover bounding-box coordinates that the cropping
+    call (mtcnn(...)) discards. Picks the top box to match keep_all=False
+    scoring, and clamps to frame bounds. Returns None when no usable box.
+    """
+    try:
+        boxes, probs = mtcnn.detect(frame_rgb)
+    except Exception:
+        return None
+    if boxes is None or len(boxes) == 0:
+        return None
+
+    # Choose the box with the highest detection probability (matches the
+    # single most-prominent face that keep_all=False scoring uses).
+    best_index = 0
+    if probs is not None and len(probs) == len(boxes):
+        valid = [(i, p) for i, p in enumerate(probs) if p is not None]
+        if valid:
+            best_index = max(valid, key=lambda item: item[1])[0]
+
+    x1, y1, x2, y2 = (float(v) for v in boxes[best_index][:4])
+    # Clamp to frame bounds; boxes can extend past edges.
+    x1 = max(0.0, min(x1, float(frame_width)))
+    y1 = max(0.0, min(y1, float(frame_height)))
+    x2 = max(0.0, min(x2, float(frame_width)))
+    y2 = max(0.0, min(y2, float(frame_height)))
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return (x1, y1, x2, y2)
 
 
 def analyze_audio_track(
@@ -377,6 +466,7 @@ def analyze_video_file(video_path: Path, config: MultimodalConfig) -> Multimodal
         sample_frames=config.sample_frames,
         temperature=config.temperature,
         device=config.device,
+        generate_heatmaps=config.generate_heatmaps,
     )
     video_score = float(np.mean([score.fake_probability for score in frame_scores]))
 
