@@ -18,11 +18,17 @@ export async function getModels(): Promise<ModelListResponse> {
   return response.json() as Promise<ModelListResponse>;
 }
 
-export async function analyzeMedia(file: File, model: ModelKey | string, sampleFrames: number): Promise<AnalysisResult> {
+export async function analyzeMedia(
+  file: File,
+  model: ModelKey | string,
+  sampleFrames: number,
+  generateHeatmaps: boolean = false,
+): Promise<AnalysisResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("model", model);
   formData.append("sample_frames", String(sampleFrames));
+  formData.append("generate_heatmaps", String(generateHeatmaps));
 
   const response = await fetch(`${API_BASE}/analyze`, {
     method: "POST",

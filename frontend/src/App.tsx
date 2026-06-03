@@ -30,6 +30,8 @@ function App() {
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(null);
+  const [generateHeatmaps, setGenerateHeatmaps] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ function App() {
     setIsAnalyzing(true);
     setError(null);
     try {
-      const nextResult = await analyzeMedia(selectedFile, selectedModel, sampleFrames);
+      const nextResult = await analyzeMedia(selectedFile, selectedModel, sampleFrames, generateHeatmaps);
       setResult(nextResult);
       setSelectedFrameIndex(nextResult.flagged_frame_indices[0] ?? nextResult.frame_results[0]?.frame_index ?? null);
     } catch (err) {
@@ -110,12 +112,14 @@ function App() {
           isLoadingModels={isLoadingModels}
           isAnalyzing={isAnalyzing}
           error={error}
+          generateHeatmaps={generateHeatmaps}
           onModelChange={setSelectedModel}
           onSampleFramesChange={(value) => setSampleFrames(clampSampleFrames(value))}
           onFileChange={(file) => {
             setSelectedFile(file);
             setError(null);
           }}
+          onGenerateHeatmapsChange={setGenerateHeatmaps}
           onAnalyze={handleAnalyze}
         />
 
@@ -125,7 +129,7 @@ function App() {
 
             {result.report_payload ? <MultimodalEvidence payload={result.report_payload} /> : null}
 
-            <ForensicMediaViewer result={result} selectedFrame={selectedFrame} mediaPreviewUrl={mediaPreviewUrl} />
+            <ForensicMediaViewer result={result} selectedFrame={selectedFrame} mediaPreviewUrl={mediaPreviewUrl} showHeatmap={showHeatmap} onToggleHeatmap={setShowHeatmap} />
 
             <section className="grid gap-4 lg:grid-cols-2">
               <SelectedFramePanel frame={selectedFrame} flaggedFrameIndices={result.flagged_frame_indices} />

@@ -45,6 +45,10 @@ class FrameResult(BaseModel):
     risk_label: RiskLabel
     risk_key: RiskKey
     thumbnail_url: Optional[str] = None
+    heatmap_url: Optional[str] = None
+    face_box: Optional[List[float]] = None
+    frame_width: Optional[int] = None
+    frame_height: Optional[int] = None
 
 
 class FrameStats(BaseModel):

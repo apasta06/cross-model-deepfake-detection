@@ -38,6 +38,10 @@ export type FrameResult = {
   risk_label: "Likely Real" | "Uncertain" | "Likely Fake";
   risk_key: RiskKey;
   thumbnail_url?: string | null;
+  heatmap_url?: string | null;
+  face_box?: [number, number, number, number] | null;
+  frame_width?: number | null;
+  frame_height?: number | null;
 };
 
 export type MultimodalPayload = {

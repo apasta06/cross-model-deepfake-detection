@@ -20,6 +20,16 @@ const frameResults: FrameResult[] = probabilities.map((fake_probability, index) 
   fake_probability,
   ...riskForProbability(fake_probability),
   thumbnail_url: `https://placehold.co/640x360/${thumbnailThemes[index % thumbnailThemes.length]}?text=Evidence+Frame+${index + 1}`,
+  // Demo heatmap data on two high-suspicion frames so the overlay toggle is
+  // exercisable in Storybook/dev without a live backend. Others stay null to
+  // also demonstrate the "heatmap unavailable for this frame" path.
+  heatmap_url:
+    index === 4 || index === 5
+      ? `https://placehold.co/220x260/7f1d1d/fecaca?text=Heatmap+${index + 1}`
+      : null,
+  face_box: index === 4 || index === 5 ? ([760, 280, 1160, 760] as [number, number, number, number]) : null,
+  frame_width: index === 4 || index === 5 ? 1920 : null,
+  frame_height: index === 4 || index === 5 ? 1080 : null,
 }));
 
 export const mockAnalysisResult: AnalysisResult = {
