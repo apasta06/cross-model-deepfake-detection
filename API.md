@@ -13,6 +13,7 @@ FastAPI service for the project React frontend. The active API path now wraps th
 - Default sampled frames: `20`, matching `detect_video.py`
 - Visual checkpoint is required
 - Audio checkpoint/audio track are optional; missing audio falls back to visual-only analysis with warnings
+- Optional Grad-CAM heatmaps via the `generate_heatmaps` flag (off by default; see "Grad-CAM Heatmaps")
 
 ## Architecture
 
@@ -22,6 +23,7 @@ The service is organized into these layers:
 - `api/routes/meta.py`: serves `/health` and `/models`.
 - `api/routes/analyze.py`: validates uploads, resolves checkpoints, calls the multimodal detector, maps results to the frontend-compatible `AnalysisResult`, and persists history/result JSON.
 - `api/multimodal_detect.py`: reusable multimodal EfficientNet-B0 video/audio inference logic refactored from `detect_video.py`.
+- `api/gradcam.py`: opt-in Grad-CAM helper used by `multimodal_detect.py` to produce per-frame heatmap overlays.
 - `api/deps.py`: settings and checkpoint resolution.
 - `api/models.py`: Pydantic response models matching `frontend/src/types/analysis.ts`.
 - `ui_mvp/schemas.py` and `ui_mvp/storage.py`: dataclass response shape and lightweight history/result persistence reused by the API.
@@ -36,6 +38,7 @@ cross-model-deepfake-detection/
 │   ├── main.py
 │   ├── deps.py
 │   ├── models.py
+│   ├── gradcam.py
 │   ├── multimodal_detect.py
 │   └── routes/
 │       ├── analyze.py
@@ -171,6 +174,7 @@ Accepts `multipart/form-data`.
 | `file` | binary | yes | Video upload. Supported extensions: `.mp4`, `.avi`, `.mov`, `.mkv`, `.mts`, `.webm` |
 | `model` | string | yes | Must be `MULTIMODAL_EFFICIENTB0` |
 | `sample_frames` | integer, 1-120 | no | Visual frames to sample. Defaults to `20` |
+| `generate_heatmaps` | boolean | no | Opt-in Grad-CAM explainability. Defaults to `false`. When `true`, each sampled frame with a detectable face gains a heatmap overlay and bounding box (see "Grad-CAM Heatmaps"). Slower, especially on CPU |
 
 Images are not accepted by the current multimodal API.
 
@@ -188,6 +192,16 @@ curl -X POST http://localhost:8000/api/v1/analyze \
   -F "file=@sample.mp4" \
   -F "model=MULTIMODAL_EFFICIENTB0" \
   -F "sample_frames=20"
+```
+
+Example request with Grad-CAM heatmaps enabled:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/analyze \
+  -F "file=@sample.mp4" \
+  -F "model=MULTIMODAL_EFFICIENTB0" \
+  -F "sample_frames=20" \
+  -F "generate_heatmaps=true"
 ```
 
 ## Multimodal Inference Behavior
@@ -231,7 +245,7 @@ Important fields:
 | `confidence_score` | Fused suspiciousness score; visual-only score when audio is unavailable |
 | `risk_level` | UI risk bucket derived from `confidence_score` |
 | `summary_text` | Human-readable multimodal summary |
-| `frame_results` | Per-frame visual suspiciousness scores |
+| `frame_results` | Per-frame visual suspiciousness scores (see "Per-Frame Fields") |
 | `flagged_frame_indices` | Visual frame indices where score is greater than `VIDEO_THRESHOLD` |
 | `warnings` | Non-fatal fallback details, especially audio fallback |
 | `report_payload` | Raw multimodal details for reporting/UI expansion |
@@ -273,6 +287,82 @@ Risk buckets used by the UI:
 - `confidence_score <= 0.35`: `likely_real`
 - `0.35 < confidence_score <= 0.74`: `uncertain`
 - `confidence_score > 0.74`: `likely_fake`
+
+### Per-Frame Fields (`frame_results`)
+
+Each entry in `frame_results` describes one sampled visual frame:
+
+| Field | Meaning |
+| --- | --- |
+| `frame_index` | Source frame index in the video |
+| `timestamp_seconds` / `timestamp_label` | Frame time, raw seconds and formatted label |
+| `fake_probability` | Per-frame visual suspiciousness (0-1) |
+| `risk_label` / `risk_key` | UI risk bucket for the frame |
+| `thumbnail_url` | Base64 JPEG data URL of the cropped face |
+| `heatmap_url` | Base64 JPEG data URL of the Grad-CAM overlay. `null` unless `generate_heatmaps=true` and a face box was recovered for the frame |
+| `face_box` | `[x1, y1, x2, y2]` face rectangle in original-frame pixels, used to position the heatmap over the video. `null` when no usable box was detected |
+| `frame_width` / `frame_height` | Source frame resolution the `face_box` is expressed in. `null` when `face_box` is `null` |
+
+The last four heatmap-related fields are always present in the schema but are `null` on a normal (non-heatmap) run, so existing consumers are unaffected.
+
+## Grad-CAM Heatmaps
+
+Grad-CAM is an opt-in explainability feature that highlights which regions of a
+face most influenced the visual model's score for a given frame.
+
+Key behaviors:
+
+- **Opt-in, default off.** Heatmaps run only when `generate_heatmaps=true` is
+  sent to `POST /api/v1/analyze`. A normal run is byte-for-byte unchanged and
+  pays no extra cost.
+- **Per sampled frame.** When enabled, every sampled frame with a detectable
+  face gets a heatmap overlay (`heatmap_url`) plus the face bounding box
+  (`face_box`) and source resolution (`frame_width`/`frame_height`).
+- **Scores are unaffected.** Frame scoring runs under `torch.no_grad()` exactly
+  as before; the Grad-CAM forward/backward pass is scoped separately, so
+  `fake_probability` and the fused verdict are identical whether or not
+  heatmaps are requested.
+- **Graceful per-frame fallback.** If the face detector returns no usable box
+  for a frame (blurry, turned away, multi-face ambiguity, out-of-bounds), that
+  frame's `heatmap_url`/`face_box` stay `null`; the frame is still scored
+  normally. Heatmap coverage is therefore "most sampled frames with a face,"
+  not guaranteed to be all of them.
+- **Cost.** With heatmaps on, each frame runs a second MTCNN detection pass (to
+  recover the box), a backward pass, and an extra JPEG encode. On CPU (the
+  default when CUDA is unavailable) this noticeably increases analysis time;
+  this is the reason the feature is opt-in.
+
+Implementation: `api/gradcam.py` (the `GradCAM` helper, hooked on the
+EfficientNet-B0 final conv block, single-logit backward, BGR throughout until
+JPEG encode), wired into `analyze_visual_track` in `api/multimodal_detect.py`.
+
+The frontend (`frontend/src/components/ForensicMediaViewer.tsx`) overlays the
+heatmap on the video while paused at the selected frame, hides it during
+playback, and frames it with a verdict-driven border, opacity, and chip derived
+from the frame's `fake_probability` versus `video_threshold` (Grad-CAM colors
+indicate where the model looked, not whether the frame is fake, so the verdict
+is surfaced separately).
+
+### Grad-CAM Diagnostic Logging
+
+`analyze_visual_track` emits `[gradcam-diagnostic]` log records (via the module
+logger in `api/multimodal_detect.py`) on every heatmap-enabled run. These are
+intentionally retained as a verification aid: they make it possible to confirm
+heatmaps are actually being produced and to pinpoint why a frame has no overlay.
+
+When `generate_heatmaps=true`, watch the uvicorn console for one line per
+sampled frame:
+
+- `frame N: heatmap OK, box=...` — heatmap generated and positioned successfully.
+- `frame N: no usable face box ...` — the detector found no usable box; frame is scored but has no overlay.
+- `frame N: heatmap generation raised` — an exception was caught (full traceback logged); frame keeps its score, overlay skipped.
+- `GradCAM init failed; heatmaps disabled for this run` — the helper could not initialize; the whole run produces no heatmaps.
+
+If the "Show heatmap" toggle in the UI is disabled, it means the result carried
+no `heatmap_url` on any frame. The diagnostic lines tell you which case above
+caused it. Absence of any `[gradcam-diagnostic]` line during a heatmap-enabled
+run indicates the flag never reached the detector (for example, a stale
+`api/routes/analyze.py` that lacks the `generate_heatmaps` form field).
 
 ## Frontend Integration
 
@@ -367,4 +457,13 @@ Add the frontend origin to `API_CORS_ORIGINS` and restart uvicorn.
 
 ### Long analysis time
 
-The endpoint is synchronous. Reduce `sample_frames`, use CUDA, or test with shorter videos.
+The endpoint is synchronous. Reduce `sample_frames`, use CUDA, or test with shorter videos. Enabling `generate_heatmaps` increases time further, especially on CPU.
+
+### Heatmaps not appearing / "Show heatmap" toggle disabled
+
+The toggle is disabled only when no frame in the result carried a `heatmap_url`. Run with `generate_heatmaps=true` and watch the uvicorn console for `[gradcam-diagnostic]` lines (see "Grad-CAM Diagnostic Logging"):
+
+- No `[gradcam-diagnostic]` lines at all — the flag did not reach the detector. Confirm `api/routes/analyze.py` is current (it must contain the `generate_heatmaps` form field) and restart uvicorn. A stale or duplicated module file (for example, an `analyze (2).py` copy that is never imported) is a common cause.
+- `no usable face box` on every frame — the detector found no usable box; try a video with a clearer, larger, front-facing face.
+- `heatmap generation raised` with a traceback — inspect the logged traceback for the specific failure.
+- `GradCAM init failed` — the helper could not attach to the model; confirm the visual checkpoint loads and inference dependencies are present.
